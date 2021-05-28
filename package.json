@@ -1,0 +1,28 @@
+{
+  "name": "computer-graphics-2021-falanti-smania",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "prestart": "npm install",
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AndreaFalanti/computer-graphics-2021-falanti-smania.git"
+  },
+  "keywords": [
+    "webGL"
+  ],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/AndreaFalanti/computer-graphics-2021-falanti-smania/issues"
+  },
+  "homepage": "https://github.com/AndreaFalanti/computer-graphics-2021-falanti-smania#readme",
+  "dependencies": {
+    "connect": "^3.7.0",
+    "serve-static": "^1.14.1"
+  }
+}
