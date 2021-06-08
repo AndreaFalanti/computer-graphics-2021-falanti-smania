@@ -5,6 +5,16 @@
 
 var utils={
 
+createAndCompileShaders:function(gl, shaderText) {
+  
+  var vertexShader = utils.createShader(gl, gl.VERTEX_SHADER, shaderText[0]);
+  var fragmentShader = utils.createShader(gl, gl.FRAGMENT_SHADER, shaderText[1]);
+
+  var program = utils.createProgram(gl, vertexShader, fragmentShader);
+
+  return program;
+},
+
 createShader:function(gl, type, source) {
   var shader = gl.createShader(type);
   gl.shaderSource(shader, source);
@@ -14,6 +24,12 @@ createShader:function(gl, type, source) {
     return shader;
   }else{
     console.log(gl.getShaderInfoLog(shader));  // eslint-disable-line
+    if(type == gl.VERTEX_SHADER){
+    	alert("ERROR IN VERTEX SHADER : " + gl.getShaderInfoLog(vertexShader));
+    }
+    if(type == gl.FRAGMENT_SHADER){
+    	alert("ERROR IN FRAGMENT SHADER : " + gl.getShaderInfoLog(vertexShader));
+    }
     gl.deleteShader(shader);
     throw "could not compile shader:" + gl.getShaderInfoLog(shader);
   }
@@ -41,7 +57,7 @@ createProgram:function(gl, vertexShader, fragmentShader) {
     const expandFullScreen = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      console.log(canvas.width+" "+window.innerWidth);
+      //console.log(canvas.width+" "+window.innerWidth);
         
     };
     expandFullScreen();
@@ -50,18 +66,24 @@ createProgram:function(gl, vertexShader, fragmentShader) {
 },
 //**** MODEL UTILS
 	// Function to load a 3D model in JSON format
-	get_json: function(url, func) {
-		var xmlHttp = new XMLHttpRequest();
-		xmlHttp.open("GET", url, false); // if true == asynchronous...
-		xmlHttp.onreadystatechange = function() {
-			if (xmlHttp.readyState == 4 && xmlHttp.status==200) {
-				//the file is loaded. Parse it as JSON and launch function
-				func(JSON.parse(xmlHttp.responseText));
-			}
-		};
-		//send the request
-		xmlHttp.send();
-	},
+    get_json:async function(url, func){
+        var response = await fetch(url);
+        if (!response.ok) {
+            alert('Network response was not ok');
+            return;
+        }
+        var json = await response.json();
+        func(json);
+    },
+    get_objstr:async function(url){
+        var response = await fetch(url);
+        if (!response.ok) {
+            alert('Network response was not ok');
+            return;
+        }
+        var text = await response.text();
+        return text;
+    },
 	
 	//function to convert decimal value of colors 
 	decimalToHex: function(d, padding) {
@@ -86,17 +108,33 @@ createProgram:function(gl, vertexShader, fragmentShader) {
 		path to the shader's text (url)
 
 	*/
+    
+    /*fetch('http://foo.com/static/bar.glsl') .then(response => {
+    if (!response.ok) {
+      alert('Network response was not ok');
+    }
+    return response.text();
+  }).then(data => console.log(data));*/
 
-	loadFile: function (url, data, callback, errorCallback) {
-		// Set up an synchronous request! Important!
+    loadFile:async function(url, data, callback, errorCallBack){
+        var response = await fetch(url);
+        if (!response.ok) {
+            alert('Network response was not ok');
+            return;
+        }
+        var text = await response.text();
+        callback(text, data);
+    },
+    
+	/*loadFile: function (url, data, callback, errorCallback) {
+		// Set up a synchronous request! Important!
 		var request = new XMLHttpRequest();
+        //The third parameter set to false makes the request synchronous
 		request.open('GET', url, false);
 
 		// Hook the event that gets called as the request progresses
 		request.onreadystatechange = function () {
 			// If the request is "DONE" (completed or failed) and if we got HTTP status 200 (OK)
-			
-				
 			if (request.readyState == 4 && request.status == 200) {
 					callback(request.responseText, data)
 				//} else { // Failed
@@ -106,9 +144,9 @@ createProgram:function(gl, vertexShader, fragmentShader) {
 		};
 
 		request.send(null);    
-	},
+	},*/
 
-	loadFiles: function (urls, callback, errorCallback) {
+	loadFiles:async function (urls, callback, errorCallback) {
     var numUrls = urls.length;
     var numComplete = 0;
     var result = [];
@@ -125,9 +163,30 @@ createProgram:function(gl, vertexShader, fragmentShader) {
 		}
 
 		for (var i = 0; i < numUrls; i++) {
-			this.loadFile(urls[i], i, partialCallback, errorCallback);
+			await this.loadFile(urls[i], i, partialCallback, errorCallback);
 		}
 	},
+
+	// loadFiles: function (urls, gl, callback, errorCallback) {
+ //    var numUrls = urls.length;
+ //    var numComplete = 0;
+ //    var result = [];
+
+	// 	// Callback for a single file
+	// 	function partialCallback(text, urlIndex) {
+	// 		result[urlIndex] = text;
+	// 		numComplete++;
+
+	// 		// When all files have downloaded
+	// 		if (numComplete == numUrls) {
+	// 			callback(gl,result);
+	// 		}
+	// 	}
+
+	// 	for (var i = 0; i < numUrls; i++) {
+	// 		this.loadFile(urls[i], i, partialCallback, errorCallback);
+	// 	}
+	// },
 	
 // *** TEXTURE UTILS (to solve problems with non power of 2 textures in webGL
 
@@ -507,6 +566,19 @@ createProgram:function(gl, vertexShader, fragmentShader) {
 
 		return out; 
 	},
+    
+    MakeRotateXYZMatrix: function(rx, ry, rz, s){
+	//Creates a world matrix for an object.
+
+		var Rx = this.MakeRotateXMatrix(ry);                
+		var Ry = this.MakeRotateYMatrix(rx);
+		var Rz = this.MakeRotateZMatrix(rz);
+		
+		out = this.multiplyMatrices(Ry, Rz);
+		out = this.multiplyMatrices(Rx, out);
+
+		return out;
+	},
 
 	MakeScaleMatrix: function(s) {
 	// Create a transform matrix for proportional scale
@@ -518,23 +590,13 @@ createProgram:function(gl, vertexShader, fragmentShader) {
 		return out; 
 	},
 
-	MakeScaleNuMatrix: function(sx, sy, sz) {
-		// Create a scale matrix for a scale of ({sx}, {sy}, {sz}).
-	
-			var out = this.identityMatrix();
-			out[0]  = sx;
-			out[5]  = sy;
-			out[10] = sz;
-			return out; 
-		},
-
 
 //***Projection Matrix operations
 	MakeWorld: function(tx, ty, tz, rx, ry, rz, s){
 	//Creates a world matrix for an object.
 
-		var Rx = this.MakeRotateXMatrix(rx);                
-		var Ry = this.MakeRotateYMatrix(ry);
+		var Rx = this.MakeRotateXMatrix(ry);                
+		var Ry = this.MakeRotateYMatrix(rx);
 		var Rz = this.MakeRotateZMatrix(rz);  
 		var S  = this.MakeScaleMatrix(s);
 		var T =  this.MakeTranslateMatrix(tx, ty, tz);         
@@ -546,23 +608,6 @@ createProgram:function(gl, vertexShader, fragmentShader) {
 
 		return out;
 	},
-
-	MakeWorldNonUnif: function(tx, ty, tz, rx, ry, rz, sx, sy, sz){
-		//Creates a world matrix for an object.
-	
-			var Rx = this.MakeRotateXMatrix(rx);                
-			var Ry = this.MakeRotateYMatrix(ry);
-			var Rz = this.MakeRotateZMatrix(rz);  
-			var S  = this.MakeScaleNuMatrix(sx,sy,sz);
-			var T =  this.MakeTranslateMatrix(tx, ty, tz);         
-			   
-			out = this.multiplyMatrices(Rz, S);
-			out = this.multiplyMatrices(Ry, out);
-			out = this.multiplyMatrices(Rx, out);  
-			out = this.multiplyMatrices(T, out);
-	
-			return out;
-		},
 
 	MakeView: function(cx, cy, cz, elev, ang) {
 	// Creates in {out} a view matrix. The camera is centerd in ({cx}, {cy}, {cz}).
