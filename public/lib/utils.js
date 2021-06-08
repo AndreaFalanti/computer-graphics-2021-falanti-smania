@@ -29,6 +29,7 @@ createProgram:function(gl, vertexShader, fragmentShader) {
   if (success) {
     return program;
   }else{
+	  // TODO
      throw ("program filed to link:" + gl.getProgramInfoLog (program));
     console.log(gl.getProgramInfoLog(program));  // eslint-disable-line
     gl.deleteProgram(program);
