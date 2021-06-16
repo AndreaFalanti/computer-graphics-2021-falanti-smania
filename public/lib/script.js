@@ -1,3 +1,4 @@
+/** @type {WebGLProgram} */
 let program;
 /** @type {WebGL2RenderingContext} */
 let gl;
@@ -6,11 +7,15 @@ const modelsDir = 'assets/models/'
 const texturesDir = 'assets/textures/';
 const shadersDir = 'shaders/'
 
+let perspectiveMatrix = [];
+let viewMatrix = [];
+
 let attributeDict = {};
 let uniformDict = {};
-let matricesDict = {};
 let textures = [];
 let vaoArray = [];
+/** @type {SceneNode[]} */
+let sceneRoots = [];
 
 let lastUpdateTime = (new Date).getTime();
 
@@ -34,22 +39,33 @@ async function main() {
     uniformDict.p0_matrixLocation = gl.getUniformLocation(program, "matrix");
     uniformDict.p0_textLocation = gl.getUniformLocation(program, "u_texture");
 
-    matricesDict.perspectiveMatrix = utils.MakePerspective(90, gl.canvas.width / gl.canvas.height, 0.1, 100.0);
+    // generate textures from image files
+    let t1 = loadImage('crate.png', gl.TEXTURE0);
+    let t2 = loadImage('wood.jpg', gl.TEXTURE0);
 
     // vertices, uv, indices are from cubeDefinition.js file
-    createVaoP0(vertices, uv, indices);
+    let drawInfo = createVaoP0(vertices, uv, indices, t1);
+    let cubeNode = new SceneNode(utils.identityMatrix(), drawInfo);
 
     let model = await loadModel('Vaccine.obj');
-    createVaoP0(model.vertices, model.uv, model.indices);
-    indicesLength = model.indices.length;
+    drawInfo = createVaoP0(model.vertices, model.uv, model.indices, t2);
+    let objNode = new SceneNode(utils.identityMatrix(), drawInfo);
 
-    loadImage('crate.png', gl.TEXTURE0);
-    loadImage('wood.jpg', gl.TEXTURE1);
+    sceneRoots.push(cubeNode, objNode);
 
     drawScene();
 }
 
-function createVaoP0(vertices, uv, indices) {
+// TODO: this program use textures, create also one for color array could be useful?
+/**
+ * Create VAO for program0, returning node drawInfo
+ * @param {number[]} vertices 
+ * @param {number[]} uv 
+ * @param {number[]} indices 
+ * @param {WebGLTexture} glTexture 
+ * @returns {{ materialColor: number[], texture: WebGLTexture, programInfo: WebGLProgram, bufferLength: number, vertexArray: WebGLVertexArrayObject}} drawInfo
+ */
+function createVaoP0(vertices, uv, indices, glTexture) {
     console.log('Object [vertices, uv, indices]');
     console.log(vertices);
     console.log(uv);
@@ -74,6 +90,14 @@ function createVaoP0(vertices, uv, indices) {
     let indexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+
+    return {
+        materialColor: null,
+        texture: glTexture,
+        programInfo : program,
+        bufferLength: indices.length,   // TODO: verify this is correct
+        vertexArray: vao
+    }
 }
 
 async function loadModel(modelPath) {
@@ -127,13 +151,18 @@ function animate() {
         cubeRy -= deltaC;
         cubeRz += deltaC;
     }
-    worldMatrix = utils.MakeWorld(0.0, 0.0, 0.0, cubeRx, cubeRy, cubeRz, 0.4);
+    sceneRoots[0].localMatrix = utils.MakeWorld(0.0, 0.0, 0.0, cubeRx, cubeRy, cubeRz, 0.4);
+    sceneRoots[1].localMatrix = utils.MakeWorld(-5.0, -5.0, -5.0, cubeRx, cubeRy, cubeRz, 0.4);
     lastUpdateTime = currentTime;
 }
 
 
 function drawScene() {
+    // update the local matrices for each object
     animate();
+
+    //update world matrixes of each object group
+    sceneRoots.forEach(el => el.updateWorldMatrix());
 
     utils.resizeCanvasToDisplaySize(gl.canvas);
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
@@ -142,18 +171,29 @@ function drawScene() {
     gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.CULL_FACE);
 
+    // compute scene matrices (shared by all objects)
+    let perspectiveMatrix = utils.MakePerspective(90, gl.canvas.width / gl.canvas.height, 0.1, 100.0);
     let viewMatrix = utils.MakeView(1.5, 0.0, 3.0, 0.0, -30.0);
-    let viewWorldMatrix = utils.multiplyMatrices(viewMatrix, worldMatrix);
-    let projectionMatrix = utils.multiplyMatrices(matricesDict.perspectiveMatrix, viewWorldMatrix);
+    // let viewWorldMatrix = utils.multiplyMatrices(viewMatrix, worldMatrix);
+    // let projectionMatrix = utils.multiplyMatrices(perspectiveMatrix, viewWorldMatrix);
+    let viewProjectionMatrix = utils.multiplyMatrices(perspectiveMatrix, viewMatrix);
 
-    gl.uniformMatrix4fv(uniformDict.p0_matrixLocation, gl.FALSE, utils.transposeMatrix(projectionMatrix));
+    // Compute all the matrices for rendering
+    sceneRoots.forEach(el => {
+        gl.useProgram(el.drawInfo.programInfo);
+        
+        let projectionMatrix = utils.multiplyMatrices(viewProjectionMatrix, el.worldMatrix);
+        //let normalMatrix = utils.invertMatrix(utils.transposeMatrix(el.worldMatrix));
+      
+        gl.uniformMatrix4fv(uniformDict.p0_matrixLocation, gl.FALSE, utils.transposeMatrix(projectionMatrix));
 
-    gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, textures[1]);
-    gl.uniform1i(uniformDict.p0_textLocation, 1);
-
-    gl.bindVertexArray(vaoArray[1]);
-    gl.drawElements(gl.TRIANGLES, indicesLength, gl.UNSIGNED_SHORT, 0);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, el.drawInfo.texture);
+        gl.uniform1i(uniformDict.p0_textLocation, 0);
+  
+        gl.bindVertexArray(el.drawInfo.vertexArray);
+        gl.drawElements(gl.TRIANGLES, el.drawInfo.bufferLength, gl.UNSIGNED_SHORT, 0);
+    });
 
     window.requestAnimationFrame(drawScene);
 }
@@ -178,4 +218,5 @@ async function init() {
     main();
 }
 
+// launch init() when page is loaded
 window.onload = init;
