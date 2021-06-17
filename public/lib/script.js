@@ -1,5 +1,5 @@
-/** @type {WebGLProgram} */
-let program;
+'use strict';
+
 /** @type {WebGL2RenderingContext} */
 let gl;
 
@@ -10,10 +10,22 @@ const shadersDir = 'shaders/'
 let perspectiveMatrix = [];
 let viewMatrix = [];
 
-let attributeDict = {};
-let uniformDict = {};
+//#region Program attributes
+let p0a_positionAttributeLocation, p0a_uvAttributeLocation;
+let p1a_positionAttributeLocation, p1a_normalAttributeLocation;
+//#endregion
+
+//#region Program uniforms
+let p0u_matrixLocation, p0u_textLocation;
+let p1u_matrixLocation, p1u_materialDiffColorHandle, p1u_lightDirectionHandle, p1u_lightColorHandle, p1u_normalMatrixPositionHandle; 
+//#endregion
+
+// TODO: textures and VAOs arrays are probably useless, because now references are stored in sceneNode
 let textures = [];
 let vaoArray = [];
+/** @type {WebGLProgram[]} */
+let programs = [];
+
 /** @type {SceneNode[]} */
 let sceneRoots = [];
 
@@ -26,6 +38,25 @@ let cubeS = 0.5;
 
 let indicesLength = 0;
 
+function getProgramAttributeLocations() {
+    p0a_positionAttributeLocation = gl.getAttribLocation(programs[0], "a_position");
+    p0a_uvAttributeLocation = gl.getAttribLocation(programs[0], "a_uv");
+
+    p1a_positionAttributeLocation = gl.getAttribLocation(programs[1], "inPosition");  
+    p1a_normalAttributeLocation = gl.getAttribLocation(programs[1], "inNormal");
+}
+
+function getProgramUniformLocations() {
+    p0u_matrixLocation = gl.getUniformLocation(programs[0], "matrix");
+    p0u_textLocation = gl.getUniformLocation(programs[0], "u_texture");
+
+    p1u_matrixLocation = gl.getUniformLocation(programs[1], "matrix");
+    p1u_materialDiffColorHandle = gl.getUniformLocation(programs[1], 'mDiffColor');
+    p1u_lightDirectionHandle = gl.getUniformLocation(programs[1], 'lightDirection');
+    p1u_lightColorHandle = gl.getUniformLocation(programs[1], 'lightColor');
+    p1u_normalMatrixPositionHandle = gl.getUniformLocation(programs[1], 'nMatrix');
+}
+
 async function main() {
     utils.resizeCanvasToDisplaySize(gl.canvas);
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
@@ -33,11 +64,8 @@ async function main() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.DEPTH_TEST);
 
-    attributeDict.p0_positionAttributeLocation = gl.getAttribLocation(program, "a_position");
-    attributeDict.p0_uvAttributeLocation = gl.getAttribLocation(program, "a_uv");
-
-    uniformDict.p0_matrixLocation = gl.getUniformLocation(program, "matrix");
-    uniformDict.p0_textLocation = gl.getUniformLocation(program, "u_texture");
+    getProgramAttributeLocations();
+    getProgramUniformLocations();
 
     // generate textures from image files
     let t1 = loadImage('crate.png', gl.TEXTURE0);
@@ -48,7 +76,7 @@ async function main() {
     let cubeNode = new SceneNode(utils.identityMatrix(), drawInfo);
 
     let model = await loadModel('Vaccine.obj');
-    drawInfo = createVaoP0(model.vertices, model.uv, model.indices, t2);
+    drawInfo = createVaoP1(model.vertices, model.normals, model.indices, [0.0, 1.0, 0.0]);
     let objNode = new SceneNode(utils.identityMatrix(), drawInfo);
 
     sceneRoots.push(cubeNode, objNode);
@@ -66,11 +94,12 @@ async function main() {
  * @returns {{ materialColor: number[], texture: WebGLTexture, programInfo: WebGLProgram, bufferLength: number, vertexArray: WebGLVertexArrayObject}} drawInfo
  */
 function createVaoP0(vertices, uv, indices, glTexture) {
-    console.log('Object [vertices, uv, indices]');
-    console.log(vertices);
-    console.log(uv);
-    console.log(indices);
+    // console.log('Object [vertices, uv, indices]');
+    // console.log(vertices);
+    // console.log(uv);
+    // console.log(indices);
 
+    gl.useProgram(programs[0]);
     let vao = gl.createVertexArray();
     vaoArray.push(vao);
     gl.bindVertexArray(vao);
@@ -78,14 +107,14 @@ function createVaoP0(vertices, uv, indices, glTexture) {
     let positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(attributeDict.p0_positionAttributeLocation);
-    gl.vertexAttribPointer(attributeDict.p0_positionAttributeLocation, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(p0a_positionAttributeLocation);
+    gl.vertexAttribPointer(p0a_positionAttributeLocation, 3, gl.FLOAT, false, 0, 0);
 
     let uvBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uv), gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(attributeDict.p0_uvAttributeLocation);
-    gl.vertexAttribPointer(attributeDict.p0_uvAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(p0a_uvAttributeLocation);
+    gl.vertexAttribPointer(p0a_uvAttributeLocation, 2, gl.FLOAT, false, 0, 0);
 
     let indexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
@@ -94,19 +123,63 @@ function createVaoP0(vertices, uv, indices, glTexture) {
     return {
         materialColor: null,
         texture: glTexture,
-        programInfo : program,
+        programInfo : programs[0],
         bufferLength: indices.length,   // TODO: verify this is correct
         vertexArray: vao
     }
 }
 
+/**
+ * Create VAO for program1, returning node drawInfo
+ * @param {number[]} vertices 
+ * @param {number[]} normals 
+ * @param {number[]} indices 
+ * @param {number[]} color 
+ * @returns {{ materialColor: number[], texture: WebGLTexture, programInfo: WebGLProgram, bufferLength: number, vertexArray: WebGLVertexArrayObject}} drawInfo
+ */
+ function createVaoP1(vertices, normals, indices, color) {
+    gl.useProgram(programs[1]);
+    let vao = gl.createVertexArray();
+    vaoArray.push(vao);
+    gl.bindVertexArray(vao);
+
+    let positionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(p1a_positionAttributeLocation);
+    gl.vertexAttribPointer(p1a_positionAttributeLocation, 3, gl.FLOAT, false, 0, 0);
+
+    let normalBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(p1a_normalAttributeLocation);
+    gl.vertexAttribPointer(p1a_normalAttributeLocation, 3, gl.FLOAT, false, 0, 0);
+
+    let indexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+
+    return {
+        materialColor: color,
+        texture: null,
+        programInfo : programs[1],
+        bufferLength: indices.length,   // TODO: verify this is correct
+        vertexArray: vao
+    }
+}
+
+/**
+ * Load .obj model from file
+ * @param {string} modelPath name only
+ * @returns {{vertices: number[], normals: number[], indices: number[], uv: number[]}}
+ */
 async function loadModel(modelPath) {
     let objStr = await utils.get_objstr(modelsDir + modelPath);
     let objModel = new OBJ.Mesh(objStr);
 
     let model = {};
     model.vertices = objModel.vertices;
-    model.normals = objModel.normals;
+    model.normals = objModel.vertexNormals;
     model.indices = objModel.indices;
     model.uv = objModel.textures;
 
@@ -183,19 +256,47 @@ function drawScene() {
         gl.useProgram(el.drawInfo.programInfo);
         
         let projectionMatrix = utils.multiplyMatrices(viewProjectionMatrix, el.worldMatrix);
-        //let normalMatrix = utils.invertMatrix(utils.transposeMatrix(el.worldMatrix));
       
-        gl.uniformMatrix4fv(uniformDict.p0_matrixLocation, gl.FALSE, utils.transposeMatrix(projectionMatrix));
+        // TODO: find best way to address multiple programs uniform assignment
+        switch(el.drawInfo.programInfo) {
+            case programs[0]:
+                gl.uniformMatrix4fv(p0u_matrixLocation, gl.FALSE, utils.transposeMatrix(projectionMatrix));
 
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, el.drawInfo.texture);
-        gl.uniform1i(uniformDict.p0_textLocation, 0);
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, el.drawInfo.texture);
+                gl.uniform1i(p0u_textLocation, 0);
+                break;
+            case programs[1]:
+                let normalMatrix = utils.invertMatrix(utils.transposeMatrix(el.worldMatrix)); // requested only by program 1 for now
+                gl.uniformMatrix4fv(p1u_matrixLocation, gl.FALSE, utils.transposeMatrix(projectionMatrix));
+                gl.uniformMatrix4fv(p1u_normalMatrixPositionHandle, gl.FALSE, utils.transposeMatrix(normalMatrix));
+
+                gl.uniform3fv(p1u_materialDiffColorHandle, el.drawInfo.materialColor);
+                // TODO: light hardcoded for test
+                gl.uniform3fv(p1u_lightColorHandle, [1.0, 1.0, 1.0]);
+                gl.uniform3fv(p1u_lightDirectionHandle, [-1.0, 0.0, 0.0]);
+                break;
+            default:
+                console.log('Invalid program, can\'t assign attributes and uniforms');
+                break;
+        }
   
         gl.bindVertexArray(el.drawInfo.vertexArray);
         gl.drawElements(gl.TRIANGLES, el.drawInfo.bufferLength, gl.UNSIGNED_SHORT, 0);
     });
 
     window.requestAnimationFrame(drawScene);
+}
+
+async function generateProgram(shadersPath) {
+    let program;
+    await utils.loadFiles([shadersPath + 'vs.glsl', shadersPath + 'fs.glsl'], function (shaderText) {
+        let vertexShader = utils.createShader(gl, gl.VERTEX_SHADER, shaderText[0]);
+        let fragmentShader = utils.createShader(gl, gl.FRAGMENT_SHADER, shaderText[1]);
+        program = utils.createProgram(gl, vertexShader, fragmentShader);
+    });
+
+    return program;
 }
 
 async function init() {
@@ -206,14 +307,10 @@ async function init() {
         return;
     }
 
-    await utils.loadFiles([shadersDir + 'vs.glsl', shadersDir + 'fs.glsl'], function (shaderText) {
-        let vertexShader = utils.createShader(gl, gl.VERTEX_SHADER, shaderText[0]);
-        console.log(vertexShader);
-        let fragmentShader = utils.createShader(gl, gl.FRAGMENT_SHADER, shaderText[1]);
-        program = utils.createProgram(gl, vertexShader, fragmentShader);
+    programs.push(await generateProgram(shadersDir + 'textured/'));   // 0: textured
+    programs.push(await generateProgram(shadersDir + 'plainColor/')); // 1: plain diffuse
 
-    });
-    gl.useProgram(program);
+    gl.useProgram(programs[0]);
 
     main();
 }

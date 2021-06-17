@@ -3,6 +3,8 @@
 //Includes texture operations
 //Includes initInteraction() function
 
+// TODO: use very ugly construct previous to ES6, but it's not the goal of the project to improve these functions so they're left almost unmodified
+
 var utils={
 
 createAndCompileShaders:function(gl, shaderText) {
@@ -45,9 +47,7 @@ createProgram:function(gl, vertexShader, fragmentShader) {
   if (success) {
     return program;
   }else{
-	  // TODO
-     throw ("program filed to link:" + gl.getProgramInfoLog (program));
-    console.log(gl.getProgramInfoLog(program));  // eslint-disable-line
+	console.log("Program failed to link:" + gl.getProgramInfoLog(program));
     gl.deleteProgram(program);
     return undefined;
   }
