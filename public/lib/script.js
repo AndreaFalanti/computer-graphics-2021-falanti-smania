@@ -28,18 +28,13 @@ let programs = [];
 
 /** @type {SceneNode[]} */
 let sceneRoots = [];
+/** @type {SceneNode[]} */
+let sceneObjects = [];
 
 let lastUpdateTime = (new Date).getTime();
 
-const MOLE_Y_UP_FRONT = 1.0;
-const MOLE_Y_UP_BACK = 1.05;
-const MOLE_Y_DOWN_FRONT = 0.55;
-const MOLE_Y_DOWN_BACK = 0.6;
-
-let cubeRx = 0.0;
-let cubeRy = 0.0;
-let cubeRz = 0.0;
-let cubeS = 0.5;
+/** @type {Mole[]} */
+let moles = [];
 
 let indicesLength = 0;
 
@@ -85,23 +80,32 @@ async function main() {
     let cabinetNode = new SceneNode(utils.MakeWorld(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0), drawInfo);
 
     drawInfo = createVaoP0(hammerModel.vertices, hammerModel.uv, hammerModel.indices, t1);
-    let hammerNode = new SceneNode(utils.identityMatrix(), drawInfo);
+    let hammerNode = new SceneNode(utils.MakeWorld(1.5, 1.8, 1.0, 0.0, 0.0, 0.0, 0.8), drawInfo);
 
     drawInfo = createVaoP0(moleModel.vertices, moleModel.uv, moleModel.indices, t1);
+    moles.push(new Mole(-0.32, 0.625, true));
+    moles.push(new Mole(0.32, 0.625, true));
+    moles.push(new Mole(-0.65, 0.2, false));
+    moles.push(new Mole(0.0, 0.2, false));
+    moles.push(new Mole(0.65, 0.2, false));
+
     // front row
-    let moleNode1 = new SceneNode(utils.MakeWorld(-0.32, MOLE_Y_DOWN_FRONT, 0.625, 0.0, 0.0, 0.0, 1.0), drawInfo);
-    let moleNode2 = new SceneNode(utils.MakeWorld(0.32, MOLE_Y_DOWN_FRONT, 0.625, 0.0, 0.0, 0.0, 1.0), drawInfo);
+    let moleNode1 = new SceneNode(moles[0].getLocalMatrix(), drawInfo);
+    let moleNode2 = new SceneNode(moles[1].getLocalMatrix(), drawInfo);
     
     // back row
-    let moleNode3 = new SceneNode(utils.MakeWorld(-0.65, MOLE_Y_DOWN_BACK, 0.2, 0.0, 0.0, 0.0, 1.0), drawInfo);
-    let moleNode4 = new SceneNode(utils.MakeWorld(0.0, MOLE_Y_DOWN_BACK, 0.2, 0.0, 0.0, 0.0, 1.0), drawInfo);
-    let moleNode5 = new SceneNode(utils.MakeWorld(0.65, MOLE_Y_DOWN_BACK, 0.2, 0.0, 0.0, 0.0, 1.0), drawInfo);
+    let moleNode3 = new SceneNode(moles[2].getLocalMatrix(), drawInfo);
+    let moleNode4 = new SceneNode(moles[3].getLocalMatrix(), drawInfo);
+    let moleNode5 = new SceneNode(moles[4].getLocalMatrix(), drawInfo);
     
-
     moleNode1.setParent(cabinetNode);
     moleNode2.setParent(cabinetNode);
+    moleNode3.setParent(cabinetNode);
+    moleNode4.setParent(cabinetNode);
+    moleNode5.setParent(cabinetNode);
 
-    sceneRoots.push(cabinetNode, hammerNode, moleNode1, moleNode2, moleNode3, moleNode4, moleNode5);
+    sceneRoots.push(cabinetNode, hammerNode);
+    sceneObjects.push(cabinetNode, hammerNode, moleNode1, moleNode2, moleNode3, moleNode4, moleNode5)
 
     drawScene();
 }
@@ -248,13 +252,13 @@ function loadImage(imagePath, glTextureIndex) {
 function animate() {
     let currentTime = (new Date).getTime();
     if (lastUpdateTime) {
-        let deltaC = (30 * (currentTime - lastUpdateTime)) / 1000.0;
-        cubeRx += deltaC;
-        cubeRy -= deltaC;
-        cubeRz += deltaC;
+        let deltaTime = currentTime - lastUpdateTime;
+        //console.log(deltaTime);
+        moles.forEach(mole => mole.animate(deltaTime));
+        // TODO: remove the hardcoded constant 2 in some way
+        moles.forEach((mole, i) => sceneObjects[i + 2].localMatrix = mole.getLocalMatrix());
     }
 
-    sceneRoots[1].localMatrix = utils.MakeWorld(3.0, 0.0, -2.0, cubeRx, cubeRy, cubeRz, 1.0);
     lastUpdateTime = currentTime;
 }
 
@@ -281,7 +285,7 @@ function drawScene() {
     let viewProjectionMatrix = utils.multiplyMatrices(perspectiveMatrix, viewMatrix);
 
     // Compute all the matrices for rendering
-    sceneRoots.forEach(el => {
+    sceneObjects.forEach(el => {
         gl.useProgram(el.drawInfo.programInfo);
         
         let projectionMatrix = utils.multiplyMatrices(viewProjectionMatrix, el.worldMatrix);
