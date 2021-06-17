@@ -31,6 +31,11 @@ let sceneRoots = [];
 
 let lastUpdateTime = (new Date).getTime();
 
+const MOLE_Y_UP_FRONT = 1.0;
+const MOLE_Y_UP_BACK = 1.05;
+const MOLE_Y_DOWN_FRONT = 0.55;
+const MOLE_Y_DOWN_BACK = 0.6;
+
 let cubeRx = 0.0;
 let cubeRy = 0.0;
 let cubeRz = 0.0;
@@ -68,18 +73,35 @@ async function main() {
     getProgramUniformLocations();
 
     // generate textures from image files
-    let t1 = loadImage('crate.png', gl.TEXTURE0);
-    let t2 = loadImage('wood.jpg', gl.TEXTURE0);
+    let t1 = await loadImage('Mole.png', gl.TEXTURE0);
 
-    // vertices, uv, indices are from cubeDefinition.js file
-    let drawInfo = createVaoP0(vertices, uv, indices, t1);
-    let cubeNode = new SceneNode(utils.identityMatrix(), drawInfo);
+    // load the models
+    let cabinetModel = await loadModel('cabinet.obj');
+    let hammerModel = await loadModel('hammer.obj');
+    let moleModel = await loadModel('mole.obj');
 
-    let model = await loadModel('Vaccine.obj');
-    drawInfo = createVaoP1(model.vertices, model.normals, model.indices, [0.0, 1.0, 0.0]);
-    let objNode = new SceneNode(utils.identityMatrix(), drawInfo);
+    // create the VAOs and the SceneNodes
+    let drawInfo = createVaoP0(cabinetModel.vertices, cabinetModel.uv, cabinetModel.indices, t1);
+    let cabinetNode = new SceneNode(utils.MakeWorld(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0), drawInfo);
 
-    sceneRoots.push(cubeNode, objNode);
+    drawInfo = createVaoP0(hammerModel.vertices, hammerModel.uv, hammerModel.indices, t1);
+    let hammerNode = new SceneNode(utils.identityMatrix(), drawInfo);
+
+    drawInfo = createVaoP0(moleModel.vertices, moleModel.uv, moleModel.indices, t1);
+    // front row
+    let moleNode1 = new SceneNode(utils.MakeWorld(-0.32, MOLE_Y_DOWN_FRONT, 0.625, 0.0, 0.0, 0.0, 1.0), drawInfo);
+    let moleNode2 = new SceneNode(utils.MakeWorld(0.32, MOLE_Y_DOWN_FRONT, 0.625, 0.0, 0.0, 0.0, 1.0), drawInfo);
+    
+    // back row
+    let moleNode3 = new SceneNode(utils.MakeWorld(-0.65, MOLE_Y_DOWN_BACK, 0.2, 0.0, 0.0, 0.0, 1.0), drawInfo);
+    let moleNode4 = new SceneNode(utils.MakeWorld(0.0, MOLE_Y_DOWN_BACK, 0.2, 0.0, 0.0, 0.0, 1.0), drawInfo);
+    let moleNode5 = new SceneNode(utils.MakeWorld(0.65, MOLE_Y_DOWN_BACK, 0.2, 0.0, 0.0, 0.0, 1.0), drawInfo);
+    
+
+    moleNode1.setParent(cabinetNode);
+    moleNode2.setParent(cabinetNode);
+
+    sceneRoots.push(cabinetNode, hammerNode, moleNode1, moleNode2, moleNode3, moleNode4, moleNode5);
 
     drawScene();
 }
@@ -94,10 +116,10 @@ async function main() {
  * @returns {{ materialColor: number[], texture: WebGLTexture, programInfo: WebGLProgram, bufferLength: number, vertexArray: WebGLVertexArrayObject}} drawInfo
  */
 function createVaoP0(vertices, uv, indices, glTexture) {
-    // console.log('Object [vertices, uv, indices]');
-    // console.log(vertices);
-    // console.log(uv);
-    // console.log(indices);
+    console.log('Object [vertices, uv, indices]');
+    console.log(vertices);
+    console.log(uv);
+    console.log(indices);
 
     gl.useProgram(programs[0]);
     let vao = gl.createVertexArray();
@@ -171,7 +193,7 @@ function createVaoP0(vertices, uv, indices, glTexture) {
 /**
  * Load .obj model from file
  * @param {string} modelPath name only
- * @returns {{vertices: number[], normals: number[], indices: number[], uv: number[]}}
+ * @returns {Promise<{vertices: number[], normals: number[], indices: number[], uv: number[]}>}
  */
 async function loadModel(modelPath) {
     let objStr = await utils.get_objstr(modelsDir + modelPath);
@@ -186,34 +208,41 @@ async function loadModel(modelPath) {
     return model;
 }
 
-function loadImage(imagePath, glTexture) {
-    // Create a texture.
-    let texture = gl.createTexture();
-    textures.push(texture);
-    // use texture unit 0
-    gl.activeTexture(glTexture);
-    // bind to the TEXTURE_2D bind point of texture unit 0
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-
-    // Asynchronously load an image
-    let image = new Image();
-    image.src = texturesDir + imagePath;
-    image.onload = function () {
-        //Make sure this is the active one
-        gl.activeTexture(gl.TEXTURE0);
+/**
+ * Get an image and generate a valid WebGL texture
+ * @param {string} imagePath name only
+ * @param {number} glTextureIndex 
+ * @returns {Promise<WebGLTexture>}
+ */
+function loadImage(imagePath, glTextureIndex) {
+    return new Promise(resolve => {
+        // Create a texture.
+        let texture = gl.createTexture();
+        textures.push(texture);
+        // use texture unit 0
+        gl.activeTexture(glTextureIndex);
+        // bind to the TEXTURE_2D bind point of texture unit 0
         gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
 
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-        // gl.texParameteri(context.TEXTURE_2D, context.TEXTURE_WRAP_S, context.CLAMP_TO_EDGE); 
-        // gl.texParameteri(context.TEXTURE_2D, context.TEXTURE_WRAP_T, context.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        // Asynchronously load an image
+        let image = new Image();
+        image.src = texturesDir + imagePath;
+        image.onload = function () {
+            //Make sure this is the active one
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, texture);
 
-        gl.generateMipmap(gl.TEXTURE_2D);
-    };
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+            gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); 
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 
-    return texture;
+            gl.generateMipmap(gl.TEXTURE_2D);
+            resolve(texture);
+        };
+    });
 }
 
 function animate() {
@@ -224,8 +253,8 @@ function animate() {
         cubeRy -= deltaC;
         cubeRz += deltaC;
     }
-    sceneRoots[0].localMatrix = utils.MakeWorld(0.0, 0.0, 0.0, cubeRx, cubeRy, cubeRz, 0.4);
-    sceneRoots[1].localMatrix = utils.MakeWorld(-5.0, -5.0, -5.0, cubeRx, cubeRy, cubeRz, 0.4);
+
+    sceneRoots[1].localMatrix = utils.MakeWorld(3.0, 0.0, -2.0, cubeRx, cubeRy, cubeRz, 1.0);
     lastUpdateTime = currentTime;
 }
 
@@ -246,7 +275,7 @@ function drawScene() {
 
     // compute scene matrices (shared by all objects)
     let perspectiveMatrix = utils.MakePerspective(90, gl.canvas.width / gl.canvas.height, 0.1, 100.0);
-    let viewMatrix = utils.MakeView(1.5, 0.0, 3.0, 0.0, -30.0);
+    let viewMatrix = utils.MakeView(1.5, 2.0, 3.0, 0.0, -30.0);
     // let viewWorldMatrix = utils.multiplyMatrices(viewMatrix, worldMatrix);
     // let projectionMatrix = utils.multiplyMatrices(perspectiveMatrix, viewWorldMatrix);
     let viewProjectionMatrix = utils.multiplyMatrices(perspectiveMatrix, viewMatrix);
