@@ -17,8 +17,7 @@ class Mole {
      * @param {boolean} front is a mole in front row?
      */
     constructor(tx, tz, front) {
-        //this.timerDown = 3 + Math.random() * 2;
-        this.timerDown = 0.5;
+        this.timerDown = 3 + Math.random() * 2;
         this.timerUp = 2 + Math.random() * 2;
         this.accumulatedTime = 0.0;
         this.dir = -1;
@@ -51,7 +50,7 @@ class Mole {
             }
         }
 
-        this.ty = clamp(this.ty + this.dir * SPEED_DELTA_Y * deltaT, this.yMin, this.yMax);
+        this.ty = utils.clamp(this.ty + this.dir * SPEED_DELTA_Y * deltaT, this.yMin, this.yMax);
     }
 
     getLocalMatrix() {
