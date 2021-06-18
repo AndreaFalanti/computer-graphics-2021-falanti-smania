@@ -13,12 +13,18 @@ let viewMatrix = [];
 //#region Program attributes
 let p0a_positionAttributeLocation, p0a_uvAttributeLocation;
 let p1a_positionAttributeLocation, p1a_normalAttributeLocation;
+let p2a_skyboxVertPosAttr;
 //#endregion
 
 //#region Program uniforms
 let p0u_matrixLocation, p0u_textLocation;
-let p1u_matrixLocation, p1u_materialDiffColorHandle, p1u_lightDirectionHandle, p1u_lightColorHandle, p1u_normalMatrixPositionHandle; 
+let p1u_matrixLocation, p1u_materialDiffColorHandle, p1u_lightDirectionHandle, p1u_lightColorHandle, p1u_normalMatrixPositionHandle;
+let p2u_skyboxTexHandle, p2u_inverseViewProjMatrixHandle;
 //#endregion
+
+// skybox
+let skyboxVao;
+let skyboxTexture;
 
 // TODO: textures and VAOs arrays are probably useless, because now references are stored in sceneNode
 let textures = [];
@@ -39,12 +45,15 @@ let moles = [];
 let cameraAngleY = 0.0;
 const CAMERA_Y_MAX = 30;
 
+//#region GET ATTRIBUTES AND UNIFORMS
 function getProgramAttributeLocations() {
     p0a_positionAttributeLocation = gl.getAttribLocation(programs[0], "a_position");
     p0a_uvAttributeLocation = gl.getAttribLocation(programs[0], "a_uv");
 
     p1a_positionAttributeLocation = gl.getAttribLocation(programs[1], "inPosition");  
     p1a_normalAttributeLocation = gl.getAttribLocation(programs[1], "inNormal");
+
+    p2a_skyboxVertPosAttr = gl.getAttribLocation(programs[2], "in_position");
 }
 
 function getProgramUniformLocations() {
@@ -56,7 +65,11 @@ function getProgramUniformLocations() {
     p1u_lightDirectionHandle = gl.getUniformLocation(programs[1], 'lightDirection');
     p1u_lightColorHandle = gl.getUniformLocation(programs[1], 'lightColor');
     p1u_normalMatrixPositionHandle = gl.getUniformLocation(programs[1], 'nMatrix');
+
+    p2u_skyboxTexHandle = gl.getUniformLocation(programs[2], "u_texture"); 
+    p2u_inverseViewProjMatrixHandle = gl.getUniformLocation(programs[2], "inverseViewProjMatrix"); 
 }
+//#endregion
 
 async function main() {
     utils.resizeCanvasToDisplaySize(gl.canvas);
@@ -106,12 +119,14 @@ async function main() {
     moleNode5.setParent(cabinetNode);
 
     sceneRoots.push(cabinetNode, hammerNode);
-    sceneObjects.push(cabinetNode, hammerNode, moleNode1, moleNode2, moleNode3, moleNode4, moleNode5)
+    sceneObjects.push(cabinetNode, hammerNode, moleNode1, moleNode2, moleNode3, moleNode4, moleNode5);
+
+    await loadSkybox();
 
     drawScene();
 }
 
-// TODO: this program use textures, create also one for color array could be useful?
+
 /**
  * Create VAO for program0, returning node drawInfo
  * @param {number[]} vertices 
@@ -214,6 +229,95 @@ async function loadModel(modelPath) {
 }
 
 /**
+ * Build skybox VAO, then load skybox images and create the texture
+ */
+async function loadSkybox() {
+    let skyboxVertPos = new Float32Array([
+        -1, -1, 1.0,
+        1, -1, 1.0,
+        -1,  1, 1.0,
+        -1,  1, 1.0,
+        1, -1, 1.0,
+        1,  1, 1.0,
+    ]);
+    
+    skyboxVao = gl.createVertexArray();
+    vaoArray.push(skyboxVao);
+    gl.bindVertexArray(skyboxVao);
+    
+    var positionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, skyboxVertPos, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(p2a_skyboxVertPosAttr);
+    gl.vertexAttribPointer(p2a_skyboxVertPosAttr, 3, gl.FLOAT, false, 0, 0);
+    
+    skyboxTexture = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0+3);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, skyboxTexture);
+    
+    var envTexDir = texturesDir + "skybox/";
+ 
+    const faceInfos = [
+        {
+            target: gl.TEXTURE_CUBE_MAP_POSITIVE_X, 
+            url: envTexDir + 'posx.jpg',
+        },
+        {
+            target: gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 
+            url: envTexDir + 'negx.jpg',
+        },
+        {
+            target: gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 
+            url: envTexDir + 'posy.jpg',
+        },
+        {
+            target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 
+            url: envTexDir + 'negy.jpg',
+        },
+        {
+            target: gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 
+            url: envTexDir + 'posz.jpg',
+        },
+        {
+            target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 
+            url: envTexDir + 'negz.jpg',
+        },
+    ];
+
+    // define some constants used for loading skybox images
+    const level = 0;
+    const internalFormat = gl.RGBA;
+    const width = 512;
+    const height = 512;
+    const format = gl.RGBA;
+    const type = gl.UNSIGNED_BYTE;
+
+    let promises = faceInfos.map(faceInfo => new Promise(resolve => {
+        // setup each face so it's immediately renderable
+        gl.texImage2D(faceInfo.target, level, internalFormat, width, height, 0, format, type, null);
+        
+        // Asynchronously load an image
+        const image = new Image();
+        image.src = faceInfo.url;
+        image.onload = function() {
+            // Now that the image has loaded upload it to the texture.
+            gl.activeTexture(gl.TEXTURE0+3);
+            gl.bindTexture(gl.TEXTURE_CUBE_MAP, skyboxTexture);
+            gl.texImage2D(faceInfo.target, level, internalFormat, format, type, image);
+            gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+
+            resolve();
+        };
+    }));
+
+    // not necessary, but better load all textures before proceeding to avoid running the game before skybox is ready
+    await Promise.all(promises);
+
+    gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+}
+
+/**
  * Get an image and generate a valid WebGL texture
  * @param {string} imagePath name only
  * @param {number} glTextureIndex 
@@ -250,6 +354,8 @@ function loadImage(imagePath, glTextureIndex) {
     });
 }
 
+//#region DRAW SCENE
+
 function animate() {
     let currentTime = (new Date).getTime();
     if (lastUpdateTime) {
@@ -263,6 +369,20 @@ function animate() {
     lastUpdateTime = currentTime;
 }
 
+function drawSkybox(viewProjectionMatrix){
+    gl.useProgram(programs[2]);
+    
+    gl.activeTexture(gl.TEXTURE0+3);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, skyboxTexture);
+    gl.uniform1i(p2u_skyboxTexHandle, 3);
+    
+    let inverseViewProjMatrix = utils.invertMatrix(viewProjectionMatrix);
+    gl.uniformMatrix4fv(p2u_inverseViewProjMatrixHandle, gl.FALSE, utils.transposeMatrix(inverseViewProjMatrix));
+    
+    gl.bindVertexArray(skyboxVao);
+    gl.depthFunc(gl.LEQUAL);
+    gl.drawArrays(gl.TRIANGLES, 0, 1*6);
+}
 
 function drawScene() {
     // update the local matrices for each object
@@ -281,8 +401,6 @@ function drawScene() {
     // compute scene matrices (shared by all objects)
     let perspectiveMatrix = utils.MakePerspective(90, gl.canvas.width / gl.canvas.height, 0.1, 100.0);
     let viewMatrix = utils.MakeView(0.0, 2.2, 3.0, -5.0, cameraAngleY);
-    // let viewWorldMatrix = utils.multiplyMatrices(viewMatrix, worldMatrix);
-    // let projectionMatrix = utils.multiplyMatrices(perspectiveMatrix, viewWorldMatrix);
     let viewProjectionMatrix = utils.multiplyMatrices(perspectiveMatrix, viewMatrix);
 
     // Compute all the matrices for rendering
@@ -319,8 +437,12 @@ function drawScene() {
         gl.drawElements(gl.TRIANGLES, el.drawInfo.bufferLength, gl.UNSIGNED_SHORT, 0);
     });
 
+    drawSkybox(viewProjectionMatrix);
+
     window.requestAnimationFrame(drawScene);
 }
+
+//#endregion
 
 async function generateProgram(shadersPath) {
     let program;
@@ -343,6 +465,7 @@ async function init() {
 
     programs.push(await generateProgram(shadersDir + 'textured/'));   // 0: textured
     programs.push(await generateProgram(shadersDir + 'plainColor/')); // 1: plain diffuse
+    programs.push(await generateProgram(shadersDir + 'skybox/')); // 1: plain diffuse
 
     gl.useProgram(programs[0]);
 
