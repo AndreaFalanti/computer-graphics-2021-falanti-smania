@@ -36,7 +36,8 @@ let lastUpdateTime = (new Date).getTime();
 /** @type {Mole[]} */
 let moles = [];
 
-let indicesLength = 0;
+let cameraAngleY = 0.0;
+const CAMERA_Y_MAX = 30;
 
 function getProgramAttributeLocations() {
     p0a_positionAttributeLocation = gl.getAttribLocation(programs[0], "a_position");
@@ -279,7 +280,7 @@ function drawScene() {
 
     // compute scene matrices (shared by all objects)
     let perspectiveMatrix = utils.MakePerspective(90, gl.canvas.width / gl.canvas.height, 0.1, 100.0);
-    let viewMatrix = utils.MakeView(1.5, 2.0, 3.0, 0.0, -30.0);
+    let viewMatrix = utils.MakeView(0.0, 2.2, 3.0, -5.0, cameraAngleY);
     // let viewWorldMatrix = utils.multiplyMatrices(viewMatrix, worldMatrix);
     // let projectionMatrix = utils.multiplyMatrices(perspectiveMatrix, viewWorldMatrix);
     let viewProjectionMatrix = utils.multiplyMatrices(perspectiveMatrix, viewMatrix);
@@ -348,5 +349,26 @@ async function init() {
     main();
 }
 
+function keyDownListener(e){
+    switch (e.code) {
+        case 'KeyQ':
+            cameraAngleY = utils.clamp(cameraAngleY + 1.0, -CAMERA_Y_MAX, CAMERA_Y_MAX);
+            break;
+        case 'KeyE':
+            cameraAngleY = utils.clamp(cameraAngleY - 1.0, -CAMERA_Y_MAX, CAMERA_Y_MAX);
+            break;  
+        default:
+            console.log('Invalid key');
+            break;
+    }
+}
+
+function keyUpListener(e){
+    // TODO
+}
+
 // launch init() when page is loaded
 window.onload = init;
+// add listener for keyboard commands (down are better for hold commands)
+window.addEventListener("keydown", keyDownListener, false);
+window.addEventListener("keyup", keyUpListener, false);
