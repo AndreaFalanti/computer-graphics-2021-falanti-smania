@@ -42,6 +42,9 @@ let lastUpdateTime = (new Date).getTime();
 /** @type {Mole[]} */
 let moles = [];
 
+/** @type {Hammer} */
+let hammer;
+
 let cameraAngleY = 0.0;
 const CAMERA_Y_MAX = 30;
 
@@ -87,6 +90,7 @@ async function main() {
     // load the models
     let cabinetModel = await loadModel('cabinet.obj');
     let hammerModel = await loadModel('hammer.obj');
+    console.log("Hammer: ", hammerModel);
     let moleModel = await loadModel('mole.obj');
 
     // create the VAOs and the SceneNodes
@@ -94,23 +98,26 @@ async function main() {
     let cabinetNode = new SceneNode(utils.MakeWorld(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0), drawInfo);
 
     drawInfo = createVaoP0(hammerModel.vertices, hammerModel.uv, hammerModel.indices, t1);
-    let hammerNode = new SceneNode(utils.MakeWorld(1.5, 1.8, 1.0, 0.0, 0.0, 0.0, 0.8), drawInfo);
+    hammer = new Hammer();
+    let hammerNode = new SceneNode(hammer.defaultPosition, drawInfo);
 
     drawInfo = createVaoP0(moleModel.vertices, moleModel.uv, moleModel.indices, t1);
-    moles.push(new Mole(-0.32, 0.625, true));
-    moles.push(new Mole(0.32, 0.625, true));
-    moles.push(new Mole(-0.65, 0.2, false));
-    moles.push(new Mole(0.0, 0.2, false));
-    moles.push(new Mole(0.65, 0.2, false));
+    moles.push(new Mole(-0.65, 0.2, false));        // left-back
+    moles.push(new Mole(-0.32, 0.625, true));       // left-front
+    moles.push(new Mole(0.0, 0.2, false));          // center-back
+    moles.push(new Mole(0.32, 0.625, true));        // right-front
+    moles.push(new Mole(0.65, 0.2, false));         // right-back
 
-    // front row
-    let moleNode1 = new SceneNode(moles[0].getLocalMatrix(), drawInfo);
-    let moleNode2 = new SceneNode(moles[1].getLocalMatrix(), drawInfo);
+    // left
+    let moleNode1 = new SceneNode(moles[0].getLocalMatrix(), drawInfo);     // back
+    let moleNode2 = new SceneNode(moles[1].getLocalMatrix(), drawInfo);     // front
     
-    // back row
+    // center
     let moleNode3 = new SceneNode(moles[2].getLocalMatrix(), drawInfo);
-    let moleNode4 = new SceneNode(moles[3].getLocalMatrix(), drawInfo);
-    let moleNode5 = new SceneNode(moles[4].getLocalMatrix(), drawInfo);
+
+    // right
+    let moleNode4 = new SceneNode(moles[3].getLocalMatrix(), drawInfo);     // front
+    let moleNode5 = new SceneNode(moles[4].getLocalMatrix(), drawInfo);     // back
     
     moleNode1.setParent(cabinetNode);
     moleNode2.setParent(cabinetNode);
@@ -360,10 +367,16 @@ function animate() {
     let currentTime = (new Date).getTime();
     if (lastUpdateTime) {
         let deltaTime = currentTime - lastUpdateTime;
-        //console.log(deltaTime);
+
+        // Moles animation
         moles.forEach(mole => mole.animate(deltaTime));
         // TODO: remove the hardcoded constant 2 in some way
         moles.forEach((mole, i) => sceneObjects[i + 2].localMatrix = mole.getLocalMatrix());
+
+        // Hammer animation
+        if (hammer.swinging) {
+            sceneRoots[1].localMatrix = hammer.swingAnimation(deltaTime);
+        }
     }
 
     lastUpdateTime = currentTime;
@@ -479,15 +492,32 @@ function keyDownListener(e){
             break;
         case 'KeyE':
             cameraAngleY = utils.clamp(cameraAngleY - 1.0, -CAMERA_Y_MAX, CAMERA_Y_MAX);
+            break;
+        case 'KeyW':
+            sceneRoots[1].localMatrix = hammer.changeCurrentPosition(-1);
+            break;
+        case 'KeyA':
+            sceneRoots[1].localMatrix = hammer.changeCurrentPosition(-2);
+            break;
+        case 'KeyS':
+            sceneRoots[1].localMatrix = hammer.changeCurrentPosition(1);
+            break;
+        case 'KeyD':
+            sceneRoots[1].localMatrix = hammer.changeCurrentPosition(2);
             break;  
         default:
-            console.log('Invalid key');
             break;
     }
 }
 
 function keyUpListener(e){
-    // TODO
+    switch (e.code) {
+        case 'Enter':
+            hammer.swinging = true;
+            break;
+        default:
+            break;
+    }
 }
 
 // launch init() when page is loaded

@@ -10,6 +10,11 @@ var utils = {
 	
 	clamp: (num, min, max) => Math.min(Math.max(num, min), max),
 
+	// Basically a foldr of utils.multiplyMatrices, to perform also multiplication with > 2 matrices easily
+	multiplyMultipleMatrices: function (...matrices) {
+		return (matrices.length === 1) ? matrices[0] : this.multiplyMatrices(matrices.shift(), this.multiplyMultipleMatrices(...matrices));
+	},
+
 	//#endregion
 
 	createAndCompileShaders: function (gl, shaderText) {
