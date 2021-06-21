@@ -75,11 +75,17 @@ function getProgramUniformLocations() {
 //#endregion
 
 async function main() {
+    // expand and add listener for auto resize
     utils.resizeCanvasToDisplaySize(gl.canvas);
+
+    // flip Y axis in texture coordinates
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.CULL_FACE);
 
     getProgramAttributeLocations();
     getProgramUniformLocations();
@@ -242,10 +248,10 @@ async function loadSkybox() {
     let skyboxVertPos = new Float32Array([
         -1, -1, 1.0,
         1, -1, 1.0,
-        -1,  1, 1.0,
-        -1,  1, 1.0,
+        -1, 1, 1.0,
+        -1, 1, 1.0,
         1, -1, 1.0,
-        1,  1, 1.0,
+        1, 1, 1.0,
     ]);
     
     skyboxVao = gl.createVertexArray();
@@ -349,7 +355,6 @@ function loadImage(imagePath, glTextureIndex) {
             gl.bindTexture(gl.TEXTURE_2D, texture);
 
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-            gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); 
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -403,13 +408,6 @@ function drawScene() {
 
     //update world matrixes of each object group
     sceneRoots.forEach(el => el.updateWorldMatrix());
-
-    utils.resizeCanvasToDisplaySize(gl.canvas);
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-    gl.clearColor(0, 0, 0, 0);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    gl.enable(gl.DEPTH_TEST);
-    //gl.enable(gl.CULL_FACE);
 
     // compute scene matrices (shared by all objects)
     let perspectiveMatrix = utils.MakePerspective(90, gl.canvas.width / gl.canvas.height, 0.1, 100.0);
