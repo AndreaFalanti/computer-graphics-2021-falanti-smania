@@ -506,7 +506,21 @@ var utils = {
 		return out;
 	},
 
+	crossVector: function(u, v){
+		/* cross product of vectors [u] and  [v] */
+		
+		 var out = [u[1]*v[2]-u[2]*v[1], u[2]*v[0]-u[0]*v[2], u[0]*v[1]-u[1]*v[0]];  
+		 
+		 return out;        
+	 },
 
+	 normalizeVector3: function(v){
+		/* cross product of vectors [u] and  [v] */
+		 var len = Math.sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);
+		 var out = [v[0]/len, v[1]/len, v[2]/len];  
+		 
+		 return out;        
+	 },
 
 
 
@@ -657,6 +671,34 @@ var utils = {
 		perspective[15] = 0.0;
 
 		return perspective;
-	}
+	},
+
+	MakeLookAt: function(c, a, u) {
+	// Creates in {out} a view matrix, using the look-at from vector c to vector a.
+		
+		Vz = this.normalizeVector3([c[0]-a[0], c[1]-a[1], c[2]-a[2]]);
+		Vx = this.normalizeVector3(this.crossVector(this.normalizeVector3(u), Vz));
+		Vy = this.crossVector(Vz, Vx);
+
+		CM =  [Vx[0], Vy[0], Vz[0], c[0],
+				Vx[1], Vy[1], Vz[1], c[1], 
+				Vx[2], Vy[2], Vz[2], c[2],
+				0.0,   0.0,   0.0,  1.0]
+
+		// calling the invert procedure
+		//		out = this.invertMatrix(CM);
+
+		// manual inversion
+		out = [Vx[0], Vx[1], Vx[2], 0.0,
+				Vy[0], Vy[1], Vy[2], 0.0, 
+				Vz[0], Vz[1], Vz[2], 0.0,
+				0.0,   0.0,   0.0,  1.0 ];
+		nc = this.multiplyMatrixVector(out, [c[0], c[1], c[2], 0.0]);
+		out[3]  = -nc[0];
+		out[7]  = -nc[1];
+		out[11] = -nc[2];
+
+		return out;
+	},
 
 }

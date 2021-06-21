@@ -45,8 +45,8 @@ let moles = [];
 /** @type {Hammer} */
 let hammer;
 
-let cameraAngleY = 0.0;
-const CAMERA_Y_MAX = 30;
+let cameraX = 0.0;
+const CAMERA_X_MAX = 1;
 
 //#region GET ATTRIBUTES AND UNIFORMS
 function getProgramAttributeLocations() {
@@ -95,7 +95,7 @@ async function main() {
 
     // create the VAOs and the SceneNodes
     let drawInfo = createVaoP0(cabinetModel.vertices, cabinetModel.uv, cabinetModel.indices, t1);
-    let cabinetNode = new SceneNode(utils.MakeWorld(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0), drawInfo);
+    let cabinetNode = new SceneNode(utils.identityMatrix(), drawInfo);
 
     drawInfo = createVaoP0(hammerModel.vertices, hammerModel.uv, hammerModel.indices, t1);
     hammer = new Hammer();
@@ -409,11 +409,12 @@ function drawScene() {
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.DEPTH_TEST);
-    gl.enable(gl.CULL_FACE);
+    //gl.enable(gl.CULL_FACE);
 
     // compute scene matrices (shared by all objects)
     let perspectiveMatrix = utils.MakePerspective(90, gl.canvas.width / gl.canvas.height, 0.1, 100.0);
-    let viewMatrix = utils.MakeView(0.0, 2.2, 3.0, -5.0, cameraAngleY);
+    //let viewMatrix = utils.MakeView(0.0, 2.2, 3.0, -5.0, cameraAngleY);
+    let viewMatrix = utils.MakeLookAt([cameraX, 2.2, 3.0], [0.0, 1.8, 0.0], [0.0, 1.0, 0.0]);
     let viewProjectionMatrix = utils.multiplyMatrices(perspectiveMatrix, viewMatrix);
 
     // Compute all the matrices for rendering
@@ -488,10 +489,10 @@ async function init() {
 function keyDownListener(e){
     switch (e.code) {
         case 'KeyQ':
-            cameraAngleY = utils.clamp(cameraAngleY + 1.0, -CAMERA_Y_MAX, CAMERA_Y_MAX);
+            cameraX = utils.clamp(cameraX - 0.05, -CAMERA_X_MAX, CAMERA_X_MAX);
             break;
         case 'KeyE':
-            cameraAngleY = utils.clamp(cameraAngleY - 1.0, -CAMERA_Y_MAX, CAMERA_Y_MAX);
+            cameraX = utils.clamp(cameraX + 0.05, -CAMERA_X_MAX, CAMERA_X_MAX);
             break;
         case 'KeyW':
             sceneRoots[1].localMatrix = hammer.changeCurrentPosition(-1);
