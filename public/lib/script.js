@@ -513,6 +513,7 @@ function keyDownListener(e){
 function keyUpListener(e){
     switch (e.code) {
         case 'Enter':
+            // this flag will trigger the animation in animate(), the logic is handled by the class
             hammer.swinging = true;
             break;
         default:

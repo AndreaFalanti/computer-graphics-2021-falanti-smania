@@ -8,18 +8,18 @@ const HAMMER_POS_2 = utils.MakeWorld(0.0, 2.5, 1.4, 0.0, 0.0, 0.0, 1.0);        
 const HAMMER_POS_3 = utils.MakeWorld(0.32, 2.5, 1.8, 0.0, 0.0, 0.0, 1.0);          // right-front mole
 const HAMMER_POS_4 = utils.MakeWorld(0.65, 2.5, 1.4, 0.0, 0.0, 0.0, 1.0);          // right-back mole
 
-let positions = [HAMMER_POS_0, HAMMER_POS_1, HAMMER_POS_2, HAMMER_POS_3, HAMMER_POS_4];
+let hammerPositions = [HAMMER_POS_0, HAMMER_POS_1, HAMMER_POS_2, HAMMER_POS_3, HAMMER_POS_4];
+
 const DELTA_RX = 850.0;
 const MAX_SWING_RX = 85.0;
 
 class Hammer { 
-
     constructor() {
         this.defaultPosition = HAMMER_POS_DEFAULT;
         this.currentPosition = 0;
         this.swinging = false;
         this.rx = 0;
-        this.swingDir = 1;
+        this.swingDir = -1;
     }
 
     changeCurrentPosition(value) {
@@ -31,26 +31,28 @@ class Hammer {
             this.currentPosition = newPos;
             console.log("Position changed to mole ", this.currentPosition);
         }
-        return positions[this.currentPosition];
+        return hammerPositions[this.currentPosition];
     }
 
     swingAnimation(deltaT) {
         deltaT = deltaT / 1000.0;   // in seconds
 
-        this.rx = utils.clamp(this.rx + DELTA_RX * deltaT * this.swingDir, 0.0, MAX_SWING_RX);
+        this.rx = utils.clamp(this.rx + DELTA_RX * deltaT * this.swingDir, -MAX_SWING_RX, 0.0);
 
-        if (this.rx === MAX_SWING_RX) {
-            this.swingDir = -1;
+        if (this.rx === -MAX_SWING_RX) {
+            this.swingDir = 1;
         }
         else if (this.rx === 0) {
-            this.swingDir = 1;
+            this.swingDir = -1;
             this.swinging = false;
         }
 
+        // rotation with center in (0, -1, 0)
         return utils.multiplyMultipleMatrices(
-            utils.MakeTranslateMatrix(0.0, -1.0, 0.0),
+            hammerPositions[this.currentPosition],
+            utils.MakeTranslateMatrix(0, -1, 0),
             utils.MakeRotateXMatrix(this.rx),
-            utils.MakeTranslateMatrix(0.0, 1.0, 0.0)
+            utils.MakeTranslateMatrix(0, 1, 0)
         );
     }
 }
