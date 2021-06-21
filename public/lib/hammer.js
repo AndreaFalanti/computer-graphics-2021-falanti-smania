@@ -24,13 +24,20 @@ class Hammer {
 
     changeCurrentPosition(value) {
         let newPos = this.currentPosition + value;
-        if ((this.currentPosition % 2 === 0 && value === -1) || (this.currentPosition % 2 === 1 && value === 1) || newPos < 0 || newPos > 4) {
+
+        // allow exceptional move on mole 4 to go on front line properly
+        if (this.currentPosition === 4 && value === 1) {
+            this.currentPosition = 3;
+            console.log("Position changed to mole ", this.currentPosition);
+        }
+        else if ((this.currentPosition % 2 === 0 && value === -1) || (this.currentPosition % 2 === 1 && value === 1) || newPos < 0 || newPos > 4) {
             console.log("Invalid move");
         }
         else {
             this.currentPosition = newPos;
             console.log("Position changed to mole ", this.currentPosition);
         }
+        
         return hammerPositions[this.currentPosition];
     }
 
