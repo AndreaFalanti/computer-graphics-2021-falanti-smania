@@ -2,7 +2,7 @@
 
 in vec3 in_position;
      
-out vec3 sampleDir;
+out vec3 sample_dir;
      
 void main() {
   // Multiply the position by the matrix.
@@ -11,5 +11,5 @@ void main() {
   // Pass a normal. Since the positions are
   // centered around the origin we can just 
   // pass the position
-  sampleDir = in_position;
+  sample_dir = in_position;
 }

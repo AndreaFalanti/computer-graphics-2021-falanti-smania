@@ -78,6 +78,9 @@ async function main() {
     // expand and add listener for auto resize
     utils.resizeCanvasToDisplaySize(gl.canvas);
 
+    // skybox must be loaded before inverting UV system
+    await loadSkybox();
+
     // flip Y axis in texture coordinates
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
@@ -133,8 +136,6 @@ async function main() {
 
     sceneRoots.push(cabinetNode, hammerNode);
     sceneObjects.push(cabinetNode, hammerNode, moleNode1, moleNode2, moleNode3, moleNode4, moleNode5);
-
-    await loadSkybox();
 
     drawScene();
 }
@@ -314,7 +315,7 @@ async function loadSkybox() {
         image.src = faceInfo.url;
         image.onload = function() {
             // Now that the image has loaded upload it to the texture.
-            gl.activeTexture(gl.TEXTURE0+3);
+            gl.activeTexture(gl.TEXTURE0);
             gl.bindTexture(gl.TEXTURE_CUBE_MAP, skyboxTexture);
             gl.texImage2D(faceInfo.target, level, internalFormat, format, type, image);
             gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
@@ -390,7 +391,7 @@ function animate() {
 function drawSkybox(viewProjectionMatrix){
     gl.useProgram(programs[2]);
     
-    gl.activeTexture(gl.TEXTURE0+3);
+    gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_CUBE_MAP, skyboxTexture);
     gl.uniform1i(p2u_skyboxTexHandle, 3);
     
