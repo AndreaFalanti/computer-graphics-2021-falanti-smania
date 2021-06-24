@@ -25,6 +25,7 @@ let p2u_skyboxTexHandle, p2u_inverseViewProjMatrixHandle;
 // skybox
 let skyboxVao;
 let skyboxTextures = [];
+let activeSkyboxIndex = 0;
 
 // TODO: textures and VAOs arrays are probably useless, because now references are stored in sceneNode
 let textures = [];
@@ -73,6 +74,11 @@ function getProgramUniformLocations() {
     p2u_inverseViewProjMatrixHandle = gl.getUniformLocation(programs[2], "inverseViewProjMatrix"); 
 }
 //#endregion
+
+// called from HTML dropdown (onChange)
+function setActiveSkybox(value) {
+    activeSkyboxIndex = value;
+}
 
 async function main() {
     // expand and add listener for auto resize
@@ -461,7 +467,7 @@ function drawScene() {
         gl.drawElements(gl.TRIANGLES, el.drawInfo.bufferLength, gl.UNSIGNED_SHORT, 0);
     });
 
-    drawSkybox(viewProjectionMatrix, skyboxTextures[0]);
+    drawSkybox(viewProjectionMatrix, skyboxTextures[activeSkyboxIndex]);
 
     window.requestAnimationFrame(drawScene);
 }

@@ -19,7 +19,7 @@
 <body>
   <canvas id="c"></canvas>
 
-  <div id="info">
+  <div id="info" class="overlay">
     <div id="timer_circle">
       <div id="timer">10</div>
     </div>
@@ -46,12 +46,24 @@
       </select>
     </div>
 
+    <div class="options">
+      <!--Skybox options-->
+      <div class="subtitle">Skybox</div>
+      <select id="skybox-dropdown" class="dropdowns menu-button" onchange="setActiveSkybox(this.value)">
+        <option value="0" selected>Indoors</option>
+        <option value="1">Virtual world</option>
+      </select>
+    </div>
+
   </div>
+
   <!--Start menu-->
-  <div id="menu">
+  <div id="menu" class="overlay">
     <div class="title">Whack-a-mole!</div>
-    <button class="menu-button" onclick="startTimer()">Start</button>
-    <button class="menu-button" onclick="resetTimer(timerID)">Reset</button>
+    <div class="wrapper between">
+      <button class="menu-button" onclick="startTimer()">Start</button>
+      <button class="menu-button" onclick="resetTimer(timerID)">Reset</button>
+    </div>
   </div>
 </body>
 
