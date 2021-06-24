@@ -24,7 +24,7 @@ let p2u_skyboxTexHandle, p2u_inverseViewProjMatrixHandle;
 
 // skybox
 let skyboxVao;
-let skyboxTexture;
+let skyboxTextures = [];
 
 // TODO: textures and VAOs arrays are probably useless, because now references are stored in sceneNode
 let textures = [];
@@ -78,8 +78,11 @@ async function main() {
     // expand and add listener for auto resize
     utils.resizeCanvasToDisplaySize(gl.canvas);
 
+    createSkyboxVAO();
     // skybox must be loaded before inverting UV system
-    await loadSkybox();
+    let sbIndoorT = await loadSkybox('indoorSkybox/', '.jpg', 512);
+    let sbVirtualT = await loadSkybox('virtualSkybox/', '.png', 1024);
+    skyboxTextures.push(sbIndoorT, sbVirtualT);
 
     // flip Y axis in texture coordinates
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
@@ -224,6 +227,27 @@ function createVaoP0(vertices, uv, indices, glTexture) {
     }
 }
 
+function createSkyboxVAO() {
+    let skyboxVertPos = new Float32Array([
+        -1, -1, 1.0,
+        1, -1, 1.0,
+        -1, 1, 1.0,
+        -1, 1, 1.0,
+        1, -1, 1.0,
+        1, 1, 1.0,
+    ]);
+    
+    skyboxVao = gl.createVertexArray();
+    vaoArray.push(skyboxVao);
+    gl.bindVertexArray(skyboxVao);
+    
+    let positionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, skyboxVertPos, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(p2a_skyboxVertPosAttr);
+    gl.vertexAttribPointer(p2a_skyboxVertPosAttr, 3, gl.FLOAT, false, 0, 0);
+}
+
 /**
  * Load .obj model from file
  * @param {string} modelPath name only
@@ -244,65 +268,50 @@ async function loadModel(modelPath) {
 
 /**
  * Build skybox VAO, then load skybox images and create the texture
+ * @param {string} skyboxDir Path to skybox folder
+ * @param {string} textureExt .jpg or .png basically
+ * @param {number} textureDim Pixels dim (images are squared)
+ * @returns {Promise<WebGLTexture>} Skybox texture
  */
-async function loadSkybox() {
-    let skyboxVertPos = new Float32Array([
-        -1, -1, 1.0,
-        1, -1, 1.0,
-        -1, 1, 1.0,
-        -1, 1, 1.0,
-        1, -1, 1.0,
-        1, 1, 1.0,
-    ]);
-    
-    skyboxVao = gl.createVertexArray();
-    vaoArray.push(skyboxVao);
-    gl.bindVertexArray(skyboxVao);
-    
-    var positionBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, skyboxVertPos, gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(p2a_skyboxVertPosAttr);
-    gl.vertexAttribPointer(p2a_skyboxVertPosAttr, 3, gl.FLOAT, false, 0, 0);
-    
-    skyboxTexture = gl.createTexture();
+async function loadSkybox(skyboxDir, textureExt, textureDim) {
+    let skyboxTexture = gl.createTexture();
     gl.activeTexture(gl.TEXTURE0+3);
     gl.bindTexture(gl.TEXTURE_CUBE_MAP, skyboxTexture);
     
-    var envTexDir = texturesDir + "skybox/";
+    let envTexDir = texturesDir + skyboxDir;
  
     const faceInfos = [
         {
             target: gl.TEXTURE_CUBE_MAP_POSITIVE_X, 
-            url: envTexDir + 'posx.jpg',
+            url: envTexDir + 'posx' + textureExt,
         },
         {
             target: gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 
-            url: envTexDir + 'negx.jpg',
+            url: envTexDir + 'negx' + textureExt,
         },
         {
             target: gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 
-            url: envTexDir + 'posy.jpg',
+            url: envTexDir + 'posy' + textureExt,
         },
         {
             target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 
-            url: envTexDir + 'negy.jpg',
+            url: envTexDir + 'negy' + textureExt,
         },
         {
             target: gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 
-            url: envTexDir + 'posz.jpg',
+            url: envTexDir + 'posz' + textureExt,
         },
         {
             target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 
-            url: envTexDir + 'negz.jpg',
+            url: envTexDir + 'negz' + textureExt,
         },
     ];
 
     // define some constants used for loading skybox images
     const level = 0;
     const internalFormat = gl.RGBA;
-    const width = 512;
-    const height = 512;
+    const width = textureDim;
+    const height = textureDim;
     const format = gl.RGBA;
     const type = gl.UNSIGNED_BYTE;
 
@@ -315,7 +324,7 @@ async function loadSkybox() {
         image.src = faceInfo.url;
         image.onload = function() {
             // Now that the image has loaded upload it to the texture.
-            gl.activeTexture(gl.TEXTURE0);
+            gl.activeTexture(gl.TEXTURE0+3);
             gl.bindTexture(gl.TEXTURE_CUBE_MAP, skyboxTexture);
             gl.texImage2D(faceInfo.target, level, internalFormat, format, type, image);
             gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
@@ -329,6 +338,8 @@ async function loadSkybox() {
 
     gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
     gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+
+    return skyboxTexture;
 }
 
 /**
@@ -388,10 +399,10 @@ function animate() {
     lastUpdateTime = currentTime;
 }
 
-function drawSkybox(viewProjectionMatrix){
+function drawSkybox(viewProjectionMatrix, skyboxTexture){
     gl.useProgram(programs[2]);
     
-    gl.activeTexture(gl.TEXTURE0);
+    gl.activeTexture(gl.TEXTURE0+3);
     gl.bindTexture(gl.TEXTURE_CUBE_MAP, skyboxTexture);
     gl.uniform1i(p2u_skyboxTexHandle, 3);
     
@@ -450,7 +461,7 @@ function drawScene() {
         gl.drawElements(gl.TRIANGLES, el.drawInfo.bufferLength, gl.UNSIGNED_SHORT, 0);
     });
 
-    drawSkybox(viewProjectionMatrix);
+    drawSkybox(viewProjectionMatrix, skyboxTextures[0]);
 
     window.requestAnimationFrame(drawScene);
 }
