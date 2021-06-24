@@ -20,6 +20,8 @@ class Hammer {
         this.swinging = false;
         this.rx = 0;
         this.swingDir = -1;
+
+        this.hitting = false;
     }
 
     changeCurrentPosition(value) {
@@ -48,6 +50,7 @@ class Hammer {
 
         if (this.rx === -MAX_SWING_RX) {
             this.swingDir = 1;
+            this.hitting = true;
         }
         else if (this.rx === 0) {
             this.swingDir = -1;

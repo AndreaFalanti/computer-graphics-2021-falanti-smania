@@ -25,6 +25,10 @@ option {
     text-align: center;
 }
 
+:disabled {
+    opacity: 0.4;
+}
+
 .horz-light-sep {
     height: 5px;
     width: 100%;
@@ -106,4 +110,9 @@ option {
 }
 .wrapper.between {
     justify-content: space-between;
+}
+
+#score-text {
+    color: #ffffff;
+    text-align: center;
 }

@@ -400,6 +400,7 @@ function animate() {
         if (hammer.swinging) {
             sceneRoots[1].localMatrix = hammer.swingAnimation(deltaTime);
         }
+        handlePossibleHammerHit(hammer, moles);
     }
 
     lastUpdateTime = currentTime;
