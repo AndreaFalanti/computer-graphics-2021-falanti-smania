@@ -11,14 +11,15 @@ let perspectiveMatrix = [];
 let viewMatrix = [];
 
 //#region Program attributes
-let p0a_positionAttributeLocation, p0a_uvAttributeLocation;
+let p0a_positionAttributeLocation, p0a_uvAttributeLocation, p0a_normalAttributeLocation;
 let p1a_positionAttributeLocation, p1a_normalAttributeLocation;
 let p2a_skyboxVertPosAttr;
 //#endregion
 
 //#region Program uniforms
-let p0u_matrixLocation, p0u_textLocation;
-let p1u_matrixLocation, p1u_materialDiffColorHandle, p1u_lightDirectionHandle, p1u_lightColorHandle, p1u_normalMatrixPositionHandle;
+let p0u_wvpMatrixLocation, p0u_textureLocation, p0u_nMatrixLocation, p0u_wMatrixLocation,
+    p0u_lightDirLocation, p0u_lightColorLocation, p0u_ambientLightColorLocation, p0u_cameraPosLocation, p0u_specularColorLocation, p0u_specularGammaLocation;
+let p1u_wvpMatrixLocation, p1u_materialDiffColorHandle, p1u_lightDirectionHandle, p1u_lightColorHandle, p1u_normalMatrixPositionHandle;
 let p2u_skyboxTexHandle, p2u_inverseViewProjMatrixHandle;
 //#endregion
 
@@ -26,6 +27,15 @@ let p2u_skyboxTexHandle, p2u_inverseViewProjMatrixHandle;
 let skyboxVao;
 let skyboxTextures = [];
 let activeSkyboxIndex = 0;
+
+// lights
+const directionalLightDir = [-1.2, 1.0, 1.0];
+const directionalLightColor = [1.0, 1.0, 1.0];
+const ambientLightColor = [0.1, 0.1, 0.1];
+
+// TODO: add specular for metallic?
+const specularColor = [1.0, 1.0, 1.0];
+const specularGamma = 6.0;
 
 // TODO: textures and VAOs arrays are probably useless, because now references are stored in sceneNode
 let textures = [];
@@ -47,28 +57,36 @@ let moles = [];
 let hammer;
 
 let cameraX = 0.0;
-const CAMERA_X_MAX = 1;
+const CAMERA_X_MAX = 1.5;
 
 //#region GET ATTRIBUTES AND UNIFORMS
 function getProgramAttributeLocations() {
     p0a_positionAttributeLocation = gl.getAttribLocation(programs[0], "a_position");
     p0a_uvAttributeLocation = gl.getAttribLocation(programs[0], "a_uv");
+    p0a_normalAttributeLocation = gl.getAttribLocation(programs[0], "a_normal");
 
-    p1a_positionAttributeLocation = gl.getAttribLocation(programs[1], "inPosition");  
-    p1a_normalAttributeLocation = gl.getAttribLocation(programs[1], "inNormal");
+    p1a_positionAttributeLocation = gl.getAttribLocation(programs[1], "a_position");  
+    p1a_normalAttributeLocation = gl.getAttribLocation(programs[1], "a_normal");
 
     p2a_skyboxVertPosAttr = gl.getAttribLocation(programs[2], "in_position");
 }
 
 function getProgramUniformLocations() {
-    p0u_matrixLocation = gl.getUniformLocation(programs[0], "matrix");
-    p0u_textLocation = gl.getUniformLocation(programs[0], "u_texture");
+    p0u_wvpMatrixLocation = gl.getUniformLocation(programs[0], "u_wvpMatrix");
+    p0u_nMatrixLocation = gl.getUniformLocation(programs[0], "u_nMatrix");
+    p0u_wMatrixLocation = gl.getUniformLocation(programs[0], "u_wMatrix");
+    p0u_textureLocation = gl.getUniformLocation(programs[0], "u_texture");
+    p0u_lightDirLocation = gl.getUniformLocation(programs[0], "u_lightDir");
+    p0u_lightColorLocation = gl.getUniformLocation(programs[0], "u_lightColor");
+    p0u_ambientLightColorLocation = gl.getUniformLocation(programs[0], "u_ambientLightColor");
+    p0u_specularColorLocation = gl.getUniformLocation(programs[0], "u_specularColor");
+    p0u_specularGammaLocation = gl.getUniformLocation(programs[0], "u_specularGamma");
 
-    p1u_matrixLocation = gl.getUniformLocation(programs[1], "matrix");
+    p1u_wvpMatrixLocation = gl.getUniformLocation(programs[1], "u_wvpMatrix");
     p1u_materialDiffColorHandle = gl.getUniformLocation(programs[1], 'mDiffColor');
     p1u_lightDirectionHandle = gl.getUniformLocation(programs[1], 'lightDirection');
     p1u_lightColorHandle = gl.getUniformLocation(programs[1], 'lightColor');
-    p1u_normalMatrixPositionHandle = gl.getUniformLocation(programs[1], 'nMatrix');
+    p1u_normalMatrixPositionHandle = gl.getUniformLocation(programs[1], 'u_nMatrix');
 
     p2u_skyboxTexHandle = gl.getUniformLocation(programs[2], "u_texture"); 
     p2u_inverseViewProjMatrixHandle = gl.getUniformLocation(programs[2], "inverseViewProjMatrix"); 
@@ -112,14 +130,14 @@ async function main() {
     let moleModel = await loadModel('mole.obj');
 
     // create the VAOs and the SceneNodes
-    let drawInfo = createVaoP0(cabinetModel.vertices, cabinetModel.uv, cabinetModel.indices, t1);
+    let drawInfo = createVaoP0(cabinetModel.vertices, cabinetModel.uv, cabinetModel.normals, cabinetModel.indices, t1);
     let cabinetNode = new SceneNode(utils.identityMatrix(), drawInfo);
 
-    drawInfo = createVaoP0(hammerModel.vertices, hammerModel.uv, hammerModel.indices, t1);
+    drawInfo = createVaoP0(hammerModel.vertices, hammerModel.uv, hammerModel.normals, hammerModel.indices, t1);
     hammer = new Hammer();
     let hammerNode = new SceneNode(hammer.defaultPosition, drawInfo);
 
-    drawInfo = createVaoP0(moleModel.vertices, moleModel.uv, moleModel.indices, t1);
+    drawInfo = createVaoP0(moleModel.vertices, moleModel.uv, moleModel.normals, moleModel.indices, t1);
     moles.push(new Mole(-0.65, 0.2, false));        // left-back
     moles.push(new Mole(-0.32, 0.625, true));       // left-front
     moles.push(new Mole(0.0, 0.2, false));          // center-back
@@ -154,11 +172,12 @@ async function main() {
  * Create VAO for program0, returning node drawInfo
  * @param {number[]} vertices 
  * @param {number[]} uv 
+ * @param {number[]} normals 
  * @param {number[]} indices 
  * @param {WebGLTexture} glTexture 
  * @returns {{ materialColor: number[], texture: WebGLTexture, programInfo: WebGLProgram, bufferLength: number, vertexArray: WebGLVertexArrayObject}} drawInfo
  */
-function createVaoP0(vertices, uv, indices, glTexture) {
+function createVaoP0(vertices, uv, normals, indices, glTexture) {
     console.log('Object [vertices, uv, indices]');
     console.log(vertices);
     console.log(uv);
@@ -180,6 +199,12 @@ function createVaoP0(vertices, uv, indices, glTexture) {
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uv), gl.STATIC_DRAW);
     gl.enableVertexAttribArray(p0a_uvAttributeLocation);
     gl.vertexAttribPointer(p0a_uvAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+
+    let normalBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(p0a_normalAttributeLocation);
+    gl.vertexAttribPointer(p0a_normalAttributeLocation, 3, gl.FLOAT, false, 0, 0);
 
     let indexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
@@ -431,27 +456,40 @@ function drawScene() {
     // compute scene matrices (shared by all objects)
     let perspectiveMatrix = utils.MakePerspective(90, gl.canvas.width / gl.canvas.height, 0.1, 100.0);
     //let viewMatrix = utils.MakeView(0.0, 2.2, 3.0, -5.0, cameraAngleY);
-    let viewMatrix = utils.MakeLookAt([cameraX, 2.2, 3.0], [0.0, 1.8, 0.0], [0.0, 1.0, 0.0]);
+    let cameraPos = [cameraX, 2.2, 3.0];
+    let viewMatrix = utils.MakeLookAt(cameraPos, [0.0, 1.8, 0.0], [0.0, 1.0, 0.0]);
     let viewProjectionMatrix = utils.multiplyMatrices(perspectiveMatrix, viewMatrix);
 
     // Compute all the matrices for rendering
     sceneObjects.forEach(el => {
         gl.useProgram(el.drawInfo.programInfo);
         
-        let projectionMatrix = utils.multiplyMatrices(viewProjectionMatrix, el.worldMatrix);
+        let worldViewProjectionMatrix = utils.multiplyMatrices(viewProjectionMatrix, el.worldMatrix);
+        let normalMatrix = utils.invertMatrix(utils.transposeMatrix(el.worldMatrix)); // for computing normals in vertex shader
       
         // TODO: find best way to address multiple programs uniform assignment
         switch(el.drawInfo.programInfo) {
             case programs[0]:
-                gl.uniformMatrix4fv(p0u_matrixLocation, gl.FALSE, utils.transposeMatrix(projectionMatrix));
+                //vs
+                gl.uniformMatrix4fv(p0u_wvpMatrixLocation, gl.FALSE, utils.transposeMatrix(worldViewProjectionMatrix));
+                gl.uniformMatrix4fv(p0u_nMatrixLocation, gl.FALSE, utils.transposeMatrix(normalMatrix));
+                gl.uniformMatrix4fv(p0u_wMatrixLocation, gl.FALSE, utils.transposeMatrix(el.worldMatrix));
+
+                //fs
+                gl.uniform3fv(p0u_lightDirLocation, directionalLightDir);
+                gl.uniform3fv(p0u_lightColorLocation, directionalLightColor);
+                gl.uniform3fv(p0u_ambientLightColorLocation, ambientLightColor);
+
+                gl.uniform3fv(p0u_cameraPosLocation, cameraPos);
+                gl.uniform3fv(p0u_specularColorLocation, specularColor);
+                gl.uniform1f(p0u_specularGammaLocation, specularGamma);
 
                 gl.activeTexture(gl.TEXTURE0);
                 gl.bindTexture(gl.TEXTURE_2D, el.drawInfo.texture);
-                gl.uniform1i(p0u_textLocation, 0);
+                gl.uniform1i(p0u_textureLocation, 0);
                 break;
             case programs[1]:
-                let normalMatrix = utils.invertMatrix(utils.transposeMatrix(el.worldMatrix)); // requested only by program 1 for now
-                gl.uniformMatrix4fv(p1u_matrixLocation, gl.FALSE, utils.transposeMatrix(projectionMatrix));
+                gl.uniformMatrix4fv(p1u_wvpMatrixLocation, gl.FALSE, utils.transposeMatrix(worldViewProjectionMatrix));
                 gl.uniformMatrix4fv(p1u_normalMatrixPositionHandle, gl.FALSE, utils.transposeMatrix(normalMatrix));
 
                 gl.uniform3fv(p1u_materialDiffColorHandle, el.drawInfo.materialColor);
@@ -494,7 +532,7 @@ async function init() {
         return;
     }
 
-    programs.push(await generateProgram(shadersDir + 'textured/'));   // 0: textured
+    programs.push(await generateProgram(shadersDir + 'lambert-phong/'));   // 0: lambert reflection, phong specular
     programs.push(await generateProgram(shadersDir + 'plainColor/')); // 1: plain diffuse
     programs.push(await generateProgram(shadersDir + 'skybox/')); // 1: plain diffuse
 
