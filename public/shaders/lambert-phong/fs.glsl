@@ -19,15 +19,21 @@ uniform float u_specularGamma;
 
 void main() {
   vec3 diffColor = vec3(texture(u_texture, uvFS));
-  vec3 eyedirVec = normalize(u_cameraPos - fsPos);
-  vec3 lightDir = normalize(u_lightDir);
+  vec3 eyedirVec = normalize(fsPos);
+  vec3 lightDir = normalize(-u_lightDir - fsPos);
 
   // diffuse
-  vec3 fd = diffColor * clamp(dot(lightDir, normalVec), 0.0, 1.0);
-  // specular
-  vec3 reflectDir = -reflect(lightDir, normalVec);
-  vec3 fs = u_specularColor * pow(clamp(dot(eyedirVec, reflectDir), 0.0, 1.0), u_specularGamma);
+  vec3 diffComp = diffColor * clamp(dot(lightDir, normalVec), 0.0, 1.0);
 
-  outColor = clamp(vec4(u_lightColor * (fd + fs) + u_ambientLightColor * diffColor, 1.0), 0.0, 1.0);
+  // specular
+  vec3 reflectDir = reflect(-lightDir, normalVec);
+  vec3 specComp = pow(clamp(dot(eyedirVec, reflectDir), 0.0, 1.0), u_specularGamma) * u_specularColor;
+
+  // output color
+  outColor = clamp(vec4(u_lightColor * diffComp + u_specularColor * specComp +  u_ambientLightColor * diffColor, 1.0), 0.0, 1.0);
+
+  //vec3 fs = u_specularColor * pow(clamp(dot(eyedirVec, reflectDir), 0.0, 1.0), u_specularGamma);
+
+  //outColor = clamp(vec4(u_lightColor * (fd + fs) + u_ambientLightColor * diffColor, 1.0), 0.0, 1.0);
   //outColor = clamp(vec4(u_lightColor * fs, 1.0), 0.0, 1.0);
 }

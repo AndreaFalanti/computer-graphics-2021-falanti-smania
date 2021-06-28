@@ -29,13 +29,13 @@ let skyboxTextures = [];
 let activeSkyboxIndex = 0;
 
 // lights
-const directionalLightDir = [-1.2, 1.0, 1.0];
+const directionalLightDir = [-2.0, -2.0, -2.0];
 const directionalLightColor = [1.0, 1.0, 1.0];
 const ambientLightColor = [0.1, 0.1, 0.1];
 
 // TODO: add specular for metallic?
 const specularColor = [1.0, 1.0, 1.0];
-const specularGamma = 6.0;
+const specularGamma = 8.0;
 
 // TODO: textures and VAOs arrays are probably useless, because now references are stored in sceneNode
 let textures = [];
@@ -455,7 +455,6 @@ function drawScene() {
 
     // compute scene matrices (shared by all objects)
     let perspectiveMatrix = utils.MakePerspective(90, gl.canvas.width / gl.canvas.height, 0.1, 100.0);
-    //let viewMatrix = utils.MakeView(0.0, 2.2, 3.0, -5.0, cameraAngleY);
     let cameraPos = [cameraX, 2.2, 3.0];
     let viewMatrix = utils.MakeLookAt(cameraPos, [0.0, 1.8, 0.0], [0.0, 1.0, 0.0]);
     let viewProjectionMatrix = utils.multiplyMatrices(perspectiveMatrix, viewMatrix);
@@ -464,8 +463,16 @@ function drawScene() {
     sceneObjects.forEach(el => {
         gl.useProgram(el.drawInfo.programInfo);
         
-        let worldViewProjectionMatrix = utils.multiplyMatrices(viewProjectionMatrix, el.worldMatrix);
-        let normalMatrix = utils.invertMatrix(utils.transposeMatrix(el.worldMatrix)); // for computing normals in vertex shader
+        let worldViewMatrix = utils.multiplyMatrices(viewMatrix, el.worldMatrix)
+        let worldViewProjectionMatrix = utils.multiplyMatrices(perspectiveMatrix, worldViewMatrix);
+
+        // Transform light direction from world to camera space
+        let lightDirMatrix = utils.invertMatrix(utils.transposeMatrix(viewMatrix));
+        let directionalLightDirTransformed = utils.multiplyMatrix3Vector3(
+            utils.sub3x3from4x4((lightDirMatrix)), directionalLightDir);
+        
+        // Matrix used to compute normals -- invertion of world-view matrix
+        let normalMatrix = utils.invertMatrix(utils.transposeMatrix(worldViewMatrix));
       
         // TODO: find best way to address multiple programs uniform assignment
         switch(el.drawInfo.programInfo) {
@@ -476,7 +483,7 @@ function drawScene() {
                 gl.uniformMatrix4fv(p0u_wMatrixLocation, gl.FALSE, utils.transposeMatrix(el.worldMatrix));
 
                 //fs
-                gl.uniform3fv(p0u_lightDirLocation, directionalLightDir);
+                gl.uniform3fv(p0u_lightDirLocation, directionalLightDirTransformed);
                 gl.uniform3fv(p0u_lightColorLocation, directionalLightColor);
                 gl.uniform3fv(p0u_ambientLightColorLocation, ambientLightColor);
 
