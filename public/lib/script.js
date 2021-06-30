@@ -59,6 +59,14 @@ let hammer;
 let cameraX = 0.0;
 const CAMERA_X_MAX = 1.5;
 
+function activateMoles() {
+    moles.forEach(el => el.activate());
+}
+
+function deactivateMoles() {
+    moles.forEach(el => el.deactivate());
+}
+
 //#region GET ATTRIBUTES AND UNIFORMS
 function getProgramAttributeLocations() {
     p0a_positionAttributeLocation = gl.getAttribLocation(programs[0], "a_position");

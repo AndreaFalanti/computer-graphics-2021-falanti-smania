@@ -6,9 +6,10 @@ const MOLE_Y_DOWN_FRONT = 0.55;
 const MOLE_Y_DOWN_BACK = 0.6;
 const Y_HITTABLE_RANGE = 0.1;
 
-const SPEED_DELTA_Y = 1.1;    // vertical movement in 1 second
+const SPEED_DELTA_Y = 1.5;    // vertical movement in 1 second
 
-const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
+const randomTimerDown = () => 2 + Math.random() * 3;
+const randomTimerUp = () => 1.5 + Math.random() * 1;
 
 class Mole {
     /**
@@ -19,9 +20,8 @@ class Mole {
      */
     constructor(tx, tz, front) {
         // timers that trigger a change of position (up or down)
-        this.timerDown = 3 + Math.random() * 2;
-        this.timerUp = 2 + Math.random() * 2;
         this.accumulatedTime = 0.0;
+        this.deactivate();
 
         this.dir = -1;
         this.front = front;
@@ -45,14 +45,14 @@ class Mole {
             if (this.accumulatedTime >= this.timerUp) {
                 this.accumulatedTime = this.accumulatedTime % this.timerUp;
                 this.dir = -1;
-                this.timerDown = 4 + Math.random() * 2;
+                this.timerDown = randomTimerDown();
             }
         }
         else {
             if (this.accumulatedTime >= this.timerDown) {
                 this.accumulatedTime = this.accumulatedTime % this.timerDown;
                 this.dir = 1;
-                this.timerUp = 2 + Math.random() * 2;
+                this.timerUp = randomTimerUp();
             }
         }
 
@@ -62,5 +62,27 @@ class Mole {
 
     getLocalMatrix() {
         return utils.MakeWorld(this.tx, this.ty, this.tz, 0.0, 0.0, 0.0, 1.0);
+    }
+
+    deactivate() {
+        this.accumulatedTime = 0;
+        this.timerUp = 0;
+        this.timerDown = Number.POSITIVE_INFINITY;
+    }
+
+    activate() {
+        this.accumulatedTime = 0;
+        this.timerUp = randomTimerUp();
+        this.timerDown = randomTimerDown();
+    }
+
+    /**
+     * Should be performed when a mole is hit. Makes mole go down after hammer contact, even if timer is not triggered.
+     */
+    onHit() {
+        // reset timer and go down
+        this.accumulatedTime = 0;
+        this.dir = -1;
+        this.timerDown = randomTimerDown();
     }
 }

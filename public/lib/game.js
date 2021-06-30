@@ -1,5 +1,5 @@
 // timer
-let timeLimit = 10;
+let timeLimit = 20;
 let timePassed = 0;
 let timeLeft = timeLimit;
 let timerID = timeLimit;
@@ -67,8 +67,10 @@ function handlePossibleHammerHit(hammer, moles) {
         return;
 
     hammer.hitting = false;
-    if (moles[hammer.currentPosition].hittable) {
+    let targetMole = moles[hammer.currentPosition];
+    if (targetMole.hittable && playing) {
         // TODO: play sound
+        targetMole.onHit();
         score += 100;
         // update UI
         document.getElementById("score-text").innerHTML = `Score: ${score}`;
@@ -78,12 +80,18 @@ function handlePossibleHammerHit(hammer, moles) {
 function startGame() {
     score = 0;
     startTimer();
-    togglePlayingStatus();
+    togglePlayingStatus();  
+
     document.getElementById("score-text").innerHTML = `Score: ${score}`;
 }
 
 function togglePlayingStatus() {
     playing = !playing
+
+    // in script.js
+    if (playing) activateMoles()
+    else deactivateMoles()
+
     document.getElementById("start-button").disabled = playing;
     document.getElementById("reset-button").disabled = !playing;
 }
