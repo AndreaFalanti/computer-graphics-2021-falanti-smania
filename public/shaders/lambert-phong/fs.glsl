@@ -20,6 +20,7 @@ uniform float u_specularGamma;
 void main() {
   vec3 diffColor = vec3(texture(u_texture, uvFS));
   vec3 eyedirVec = normalize(fsPos);
+  // L12, p.5: light dir is a unitary vector that by convention points TOWARDS the light source
   vec3 lightDir = normalize(-u_lightDir - fsPos);
 
   // diffuse
@@ -30,10 +31,6 @@ void main() {
   vec3 specComp = pow(clamp(dot(eyedirVec, reflectDir), 0.0, 1.0), u_specularGamma) * u_specularColor;
 
   // output color
-  outColor = clamp(vec4(u_lightColor * diffComp + u_specularColor * specComp +  u_ambientLightColor * diffColor, 1.0), 0.0, 1.0);
-
-  //vec3 fs = u_specularColor * pow(clamp(dot(eyedirVec, reflectDir), 0.0, 1.0), u_specularGamma);
-
-  //outColor = clamp(vec4(u_lightColor * (fd + fs) + u_ambientLightColor * diffColor, 1.0), 0.0, 1.0);
-  //outColor = clamp(vec4(u_lightColor * fs, 1.0), 0.0, 1.0);
+  outColor = clamp(vec4(u_lightColor * (diffComp + specComp) + u_ambientLightColor * diffColor, 1.0), 0.0, 1.0);
+  //outColor = clamp(vec4(u_lightColor * specComp, 1.0), 0.0, 1.0); // specular debugging
 }

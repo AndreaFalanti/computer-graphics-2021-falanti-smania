@@ -29,13 +29,13 @@ let skyboxTextures = [];
 let activeSkyboxIndex = 0;
 
 // lights
-const directionalLightDir = [-2.0, -2.0, -2.0];
+const directionalLightDir = [2.0, -2.0, -2.0];
 const directionalLightColor = [1.0, 1.0, 1.0];
 const ambientLightColor = [0.1, 0.1, 0.1];
 
 // TODO: add specular for metallic?
 const specularColor = [1.0, 1.0, 1.0];
-const specularGamma = 8.0;
+const specularGamma = 16.0;
 
 // TODO: textures and VAOs arrays are probably useless, because now references are stored in sceneNode
 let textures = [];
