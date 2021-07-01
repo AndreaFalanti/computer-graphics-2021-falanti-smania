@@ -5,8 +5,8 @@ class SceneNode {
     /**
      * Create a scene node
      * @param {number[]} localMatrix 
-     * @param {{ materialColor: number[], texture: WebGLTexture, programInfo: WebGLProgram, bufferLength: number,
-     *          vertexArray: WebGLVertexArrayObject, uniforms: object }} drawInfo 
+     * @param {Array<{ materialColor: number[], texture: WebGLTexture, programInfo: WebGLProgram, bufferLength: number,
+     *          vertexArray: WebGLVertexArrayObject, uniforms: object }>} drawInfo 
      */
     constructor(localMatrix, drawInfo) {
         this.children = [];

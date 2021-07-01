@@ -29,8 +29,8 @@ void main() {
 
   // specular
   vec3 specularColor = (u_metallic) ? diffColor : u_specularColor;
-  vec3 reflectDir = reflect(-lightDir, normalVec);
-  vec3 specComp = pow(clamp(dot(eyeDir, reflectDir), 0.0, 1.0), u_specularGamma) * specularColor;
+  vec3 hDir = normalize(lightDir + eyeDir);
+  vec3 specComp = pow(clamp(dot(normalVec, hDir), 0.0, 1.0), u_specularGamma) * specularColor;
 
   // output color
   outColor = clamp(vec4(u_lightColor * (diffComp + specComp) + u_ambientLightColor * diffColor, 1.0), 0.0, 1.0);
