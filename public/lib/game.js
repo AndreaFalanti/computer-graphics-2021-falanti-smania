@@ -51,7 +51,6 @@ function resetTimer(timerID) {
     timePassed = 0;
     timeLeft = timeLimit;
     timerID = timeLimit;
-    playing = false;
 
     document.getElementById("timer").innerHTML = timerID;
 }
@@ -83,6 +82,11 @@ function startGame() {
     togglePlayingStatus();  
 
     document.getElementById("score-text").innerHTML = `Score: ${score}`;
+}
+
+function resetGame() {
+    resetTimer(timerID);
+    togglePlayingStatus();
 }
 
 function togglePlayingStatus() {
