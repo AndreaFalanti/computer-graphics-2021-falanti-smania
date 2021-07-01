@@ -18,7 +18,8 @@ let p2a_skyboxVertPosAttr;
 
 //#region Program uniforms
 let p0u_wvpMatrixLocation, p0u_textureLocation, p0u_nMatrixLocation, p0u_wMatrixLocation,
-    p0u_lightDirLocation, p0u_lightColorLocation, p0u_ambientLightColorLocation, p0u_cameraPosLocation, p0u_specularColorLocation, p0u_specularGammaLocation;
+    p0u_lightDirLocation, p0u_lightColorLocation, p0u_ambientLightColorLocation, p0u_cameraPosLocation,
+    p0u_specularColorLocation, p0u_specularGammaLocation, p0u_metallicLocation;
 let p1u_wvpMatrixLocation, p1u_materialDiffColorHandle, p1u_lightDirectionHandle, p1u_lightColorHandle, p1u_normalMatrixPositionHandle;
 let p2u_skyboxTexHandle, p2u_inverseViewProjMatrixHandle;
 //#endregion
@@ -33,9 +34,8 @@ const directionalLightDir = [2.0, -2.0, -2.0];
 const directionalLightColor = [1.0, 1.0, 1.0];
 const ambientLightColor = [0.1, 0.1, 0.1];
 
-// TODO: add specular for metallic?
 const specularColor = [1.0, 1.0, 1.0];
-const specularGamma = 16.0;
+const specularGamma = 4.0;
 
 // TODO: textures and VAOs arrays are probably useless, because now references are stored in sceneNode
 let textures = [];
@@ -89,6 +89,8 @@ function getProgramUniformLocations() {
     p0u_ambientLightColorLocation = gl.getUniformLocation(programs[0], "u_ambientLightColor");
     p0u_specularColorLocation = gl.getUniformLocation(programs[0], "u_specularColor");
     p0u_specularGammaLocation = gl.getUniformLocation(programs[0], "u_specularGamma");
+    p0u_metallicLocation = gl.getUniformLocation(programs[0], "u_metallic"); 
+
 
     p1u_wvpMatrixLocation = gl.getUniformLocation(programs[1], "u_wvpMatrix");
     p1u_materialDiffColorHandle = gl.getUniformLocation(programs[1], 'mDiffColor');
@@ -141,11 +143,11 @@ async function main() {
     let drawInfo = createVaoP0(cabinetModel.vertices, cabinetModel.uv, cabinetModel.normals, cabinetModel.indices, t1);
     let cabinetNode = new SceneNode(utils.identityMatrix(), drawInfo);
 
-    drawInfo = createVaoP0(hammerModel.vertices, hammerModel.uv, hammerModel.normals, hammerModel.indices, t1);
+    drawInfo = createVaoP0(hammerModel.vertices, hammerModel.uv, hammerModel.normals, hammerModel.indices, t1, true);
     hammer = new Hammer();
     let hammerNode = new SceneNode(hammer.defaultPosition, drawInfo);
 
-    drawInfo = createVaoP0(moleModel.vertices, moleModel.uv, moleModel.normals, moleModel.indices, t1);
+    drawInfo = createVaoP0(moleModel.vertices, moleModel.uv, moleModel.normals, moleModel.indices, t1, true);
     moles.push(new Mole(-0.65, 0.2, false));        // left-back
     moles.push(new Mole(-0.32, 0.625, true));       // left-front
     moles.push(new Mole(0.0, 0.2, false));          // center-back
@@ -182,10 +184,11 @@ async function main() {
  * @param {number[]} uv 
  * @param {number[]} normals 
  * @param {number[]} indices 
- * @param {WebGLTexture} glTexture 
+ * @param {WebGLTexture} glTexture
+ * @param {metallic} metallic is this object metallic? 
  * @returns {{ materialColor: number[], texture: WebGLTexture, programInfo: WebGLProgram, bufferLength: number, vertexArray: WebGLVertexArrayObject}} drawInfo
  */
-function createVaoP0(vertices, uv, normals, indices, glTexture) {
+function createVaoP0(vertices, uv, normals, indices, glTexture, metallic = false) {
     console.log('Object [vertices, uv, indices]');
     console.log(vertices);
     console.log(uv);
@@ -223,7 +226,8 @@ function createVaoP0(vertices, uv, normals, indices, glTexture) {
         texture: glTexture,
         programInfo : programs[0],
         bufferLength: indices.length,   // TODO: verify this is correct
-        vertexArray: vao
+        vertexArray: vao,
+        uniforms: { 'metallic': metallic }
     }
 }
 
@@ -502,6 +506,8 @@ function drawScene() {
                 gl.activeTexture(gl.TEXTURE0);
                 gl.bindTexture(gl.TEXTURE_2D, el.drawInfo.texture);
                 gl.uniform1i(p0u_textureLocation, 0);
+
+                gl.uniform1i(p0u_metallicLocation, el.drawInfo.uniforms.metallic);
                 break;
             case programs[1]:
                 gl.uniformMatrix4fv(p1u_wvpMatrixLocation, gl.FALSE, utils.transposeMatrix(worldViewProjectionMatrix));
@@ -549,7 +555,7 @@ async function init() {
 
     programs.push(await generateProgram(shadersDir + 'lambert-phong/'));   // 0: lambert reflection, phong specular
     programs.push(await generateProgram(shadersDir + 'plainColor/')); // 1: plain diffuse
-    programs.push(await generateProgram(shadersDir + 'skybox/')); // 1: plain diffuse
+    programs.push(await generateProgram(shadersDir + 'skybox/')); // 2: skybox
 
     gl.useProgram(programs[0]);
 

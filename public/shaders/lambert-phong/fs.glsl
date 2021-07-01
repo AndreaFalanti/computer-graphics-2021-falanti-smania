@@ -16,6 +16,7 @@ uniform vec3 u_ambientLightColor;
 uniform vec3 u_cameraPos;
 uniform vec3 u_specularColor;
 uniform float u_specularGamma;
+uniform bool u_metallic;
 
 void main() {
   vec3 diffColor = vec3(texture(u_texture, uvFS));
@@ -27,8 +28,9 @@ void main() {
   vec3 diffComp = diffColor * clamp(dot(lightDir, normalVec), 0.0, 1.0);
 
   // specular
+  vec3 specularColor = (u_metallic) ? diffColor : u_specularColor;
   vec3 reflectDir = reflect(-lightDir, normalVec);
-  vec3 specComp = pow(clamp(dot(eyedirVec, reflectDir), 0.0, 1.0), u_specularGamma) * u_specularColor;
+  vec3 specComp = pow(clamp(dot(eyedirVec, reflectDir), 0.0, 1.0), u_specularGamma) * specularColor;
 
   // output color
   outColor = clamp(vec4(u_lightColor * (diffComp + specComp) + u_ambientLightColor * diffColor, 1.0), 0.0, 1.0);
