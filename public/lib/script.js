@@ -18,11 +18,15 @@ let p3a_positionAttributeLocation, p3a_uvAttributeLocation, p3a_normalAttributeL
 //#endregion
 
 //#region Program uniforms
+// Program 0 -- Lambert & Phong
 let p0u_wvpMatrixLocation, p0u_textureLocation, p0u_nMatrixLocation, p0u_wMatrixLocation,
     p0u_lightDirLocation, p0u_lightColorLocation, p0u_ambientLightColorLocation, p0u_cameraPosLocation,
     p0u_specularColorLocation, p0u_specularGammaLocation, p0u_metallicLocation;
+    
 let p1u_wvpMatrixLocation, p1u_materialDiffColorHandle, p1u_lightDirectionHandle, p1u_lightColorHandle, p1u_normalMatrixPositionHandle;
 let p2u_skyboxTexHandle, p2u_inverseViewProjMatrixHandle;
+
+// Program 3 -- Lambert & Blinn
 let p3u_wvpMatrixLocation, p3u_textureLocation, p3u_nMatrixLocation, p3u_wMatrixLocation,
     p3u_lightDirLocation, p3u_lightColorLocation, p3u_ambientLightColorLocation, p3u_cameraPosLocation,
     p3u_specularColorLocation, p3u_specularGammaLocation, p3u_metallicLocation;
@@ -79,6 +83,8 @@ function changeGraphics(val) {
 
 //#region GET ATTRIBUTES AND UNIFORMS
 function getProgramAttributeLocations() {
+
+    // Program 0 -- Lambert & Phong, direct light
     p0a_positionAttributeLocation = gl.getAttribLocation(programs[0], "a_position");
     p0a_uvAttributeLocation = gl.getAttribLocation(programs[0], "a_uv");
     p0a_normalAttributeLocation = gl.getAttribLocation(programs[0], "a_normal");
@@ -88,12 +94,15 @@ function getProgramAttributeLocations() {
 
     p2a_skyboxVertPosAttr = gl.getAttribLocation(programs[2], "in_position");
 
+    // Program 3 -- Lambert & Blinn, direct light
     p3a_positionAttributeLocation = gl.getAttribLocation(programs[3], "a_position");
     p3a_uvAttributeLocation = gl.getAttribLocation(programs[3], "a_uv");
     p3a_normalAttributeLocation = gl.getAttribLocation(programs[3], "a_normal");
 }
 
 function getProgramUniformLocations() {
+
+    // Program 0
     p0u_wvpMatrixLocation = gl.getUniformLocation(programs[0], "u_wvpMatrix");
     p0u_nMatrixLocation = gl.getUniformLocation(programs[0], "u_nMatrix");
     p0u_wMatrixLocation = gl.getUniformLocation(programs[0], "u_wMatrix");
@@ -115,6 +124,7 @@ function getProgramUniformLocations() {
     p2u_skyboxTexHandle = gl.getUniformLocation(programs[2], "u_texture"); 
     p2u_inverseViewProjMatrixHandle = gl.getUniformLocation(programs[2], "inverseViewProjMatrix");
 
+    // Program 3
     p3u_wvpMatrixLocation = gl.getUniformLocation(programs[3], "u_wvpMatrix");
     p3u_nMatrixLocation = gl.getUniformLocation(programs[3], "u_nMatrix");
     p3u_wMatrixLocation = gl.getUniformLocation(programs[3], "u_wMatrix");
