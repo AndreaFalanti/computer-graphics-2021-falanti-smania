@@ -33,6 +33,12 @@ class Mole {
         this.yMax = (front) ? MOLE_Y_UP_FRONT : MOLE_Y_UP_BACK;
         this.yMin = (front) ? MOLE_Y_DOWN_FRONT : MOLE_Y_DOWN_BACK;
 
+        this.cylinderMesh = {
+            base: [tx, this.yMax - 0.28, tz],
+            axis: [0, 1, 0],
+            radius: 0.165
+        }
+
         // defines if mole can be hit by hammer
         this.hittable = false;
     }

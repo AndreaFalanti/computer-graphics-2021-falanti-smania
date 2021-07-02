@@ -15,6 +15,18 @@ var utils = {
 		return (matrices.length === 1) ? matrices[0] : this.multiplyMatrices(matrices.shift(), this.multiplyMultipleMatrices(...matrices));
 	},
 
+	vectorLength: function(v) {
+		return Math.sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);
+	},
+
+	subtractVectors: function(v, u) {
+		return [v[0] - u[0], v[1] - u[1], v[2] - u[2]];
+	},
+
+	dotProduct: function(v, u) {
+		return v[0] * u[0] + v[1] * u[1] + v[2] * u[2];
+	},
+
 	//#endregion
 
 	createAndCompileShaders: function (gl, shaderText) {

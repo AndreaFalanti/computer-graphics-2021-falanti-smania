@@ -9,6 +9,9 @@ const shadersDir = 'shaders/'
 
 let perspectiveMatrix = [];
 let viewMatrix = [];
+let cameraPos = [];
+let cameraX = 0.0;
+const CAMERA_X_MAX = 1.5;
 
 //#region Program attributes
 let p0a_positionAttributeLocation, p0a_uvAttributeLocation, p0a_normalAttributeLocation;
@@ -65,9 +68,6 @@ let moles = [];
 
 /** @type {Hammer} */
 let hammer;
-
-let cameraX = 0.0;
-const CAMERA_X_MAX = 1.5;
 
 function activateMoles() {
     moles.forEach(el => el.activate());
@@ -553,9 +553,9 @@ function drawScene() {
     sceneRoots.forEach(el => el.updateWorldMatrix());
 
     // compute scene matrices (shared by all objects)
-    let perspectiveMatrix = utils.MakePerspective(90, gl.canvas.width / gl.canvas.height, 0.1, 100.0);
-    let cameraPos = [cameraX, 2.2, 3.0];
-    let viewMatrix = utils.MakeLookAt(cameraPos, [0.0, 1.8, 0.0], [0.0, 1.0, 0.0]);
+    perspectiveMatrix = utils.MakePerspective(90, gl.canvas.width / gl.canvas.height, 0.1, 100.0);
+    cameraPos = [cameraX, 2.2, 3.0];
+    viewMatrix = utils.MakeLookAt(cameraPos, [0.0, 1.8, 0.0], [0.0, 1.0, 0.0]);
     let viewProjectionMatrix = utils.multiplyMatrices(perspectiveMatrix, viewMatrix);
 
     // Compute all the matrices for rendering
@@ -672,6 +672,97 @@ async function init() {
     main();
 }
 
+/**
+ * Taken from: https://github.com/erich666/GraphicsGems/blob/master/gemsiv/ray_cyl.c, converted to javascript.
+ * Only relevant operations for just checking the hit are performed.
+ * TODO: actually doesn't use the cylinder height, height is unlimited.
+ * @param {*} rayStartPoint 
+ * @param {*} rayNormalisedDir 
+ * @param {*} cylBase 
+ * @param {*} cylAxis 
+ * @param {*} cylRadius 
+ * @returns {boolean} If raycast hits the cylinder of not
+ */
+function rayCylinderIntersection(rayStartPoint, rayNormalisedDir, cylBase, cylAxis, cylRadius) {
+    let RC = utils.subtractVectors(rayStartPoint, cylBase);
+    let n = utils.crossVector(rayNormalisedDir, cylAxis);
+
+    let d;
+    if (utils.vectorLength(n) === 0) {
+        d = utils.dotProduct(RC, cylAxis);
+        let D = utils.subtractVectors(RC, cylAxis.map(el => el * d));
+        d = utils.vectorLength(D);
+
+        return d <= cylRadius;
+    }
+
+    n = utils.normalizeVector3(n);
+    d = Math.abs(utils.dotProduct(RC, n));
+
+    return d <= cylRadius;
+}
+
+function performRaycast(e){
+    //These commented lines of code only work if the canvas is full screen
+    /*console.log("ClientX "+ev.clientX+" ClientY "+ev.clientY);
+    let normX = (2*ev.clientX)/ gl.canvas.width - 1;
+    let normY = 1 - (2*ev.clientY) / gl.canvas.height;
+    console.log("NormX "+normX+" NormY "+normY);*/
+
+    //This is a way of calculating the coordinates of the click in the canvas taking into account its possible displacement in the page
+    let top = 0.0, left = 0.0;
+    let glCanvas = gl.canvas;
+    while (glCanvas && glCanvas.tagName !== 'BODY') {
+        top += glCanvas.offsetTop;
+        left += glCanvas.offsetLeft;
+        glCanvas = glCanvas.offsetParent;
+    }
+    console.log(`left: ${left}, top: ${top}`);
+    let x = e.clientX - left;
+    let y = e.clientY - top;
+        
+    //Here we calculate the normalised device coordinates from the pixel coordinates of the canvas
+    console.log(`Client X: ${x}, Client Y: ${y}`);
+    let normX = (2*x)/ gl.canvas.width - 1;
+    let normY = 1 - (2*y) / gl.canvas.height;
+    console.log(`NormX: ${normX}, NormY: ${normY}`);
+
+    //We need to go through the transformation pipeline in the inverse order so we invert the matrices
+    let projInv = utils.invertMatrix(perspectiveMatrix);
+    let viewInv = utils.invertMatrix(viewMatrix);
+    
+    //Find the point (un)projected on the near plane, from clip space coords to eye coords
+    //z = -1 makes it so the point is on the near plane
+    //w = 1 is for the homogeneous coordinates in clip space
+    let pointEyeCoords = utils.multiplyMatrixVector(projInv, [normX, normY, -1, 1]);
+    console.log("Point eye coords: " + pointEyeCoords);
+
+    //This finds the direction of the ray in eye space
+    //Formally, to calculate the direction you would do dir = point - eyePos but since we are in eye space eyePos = [0,0,0] 
+    //w = 0 is because this is not a point anymore but is considered as a direction
+    let rayEyeCoords = [pointEyeCoords[0], pointEyeCoords[1], pointEyeCoords[2], 0];
+
+    
+    //We find the direction expressed in world coordinates by multipling with the inverse of the view matrix
+    let rayDir = utils.multiplyMatrixVector(viewInv, rayEyeCoords);
+    console.log("Ray direction: " + rayDir);
+    // TODO: from 4 to 3 vector, but should not be a problem
+    let normalisedRayDir = utils.normalizeVector3(rayDir);
+    console.log("Normalised ray dir: " + normalisedRayDir);
+    //The ray starts from the camera in world coordinates
+    let rayStartPoint = cameraPos;
+    
+    //Iterate on all moles in the scene to check for collisions
+    // TODO: avoid multiple collisions or check for the nearest one
+    for(let i = 0; i < moles.length; i++){
+        let cylinderInfo = moles[i].cylinderMesh;
+        let hit = rayCylinderIntersection(rayStartPoint, normalisedRayDir, cylinderInfo.base, cylinderInfo.axis, cylinderInfo.radius);
+        if (hit){
+            console.log("Raycast hit mole number: " + i);
+        }
+    }
+}
+
 function keyDownListener(e){
     switch (e.code) {
         case 'KeyQ':
@@ -714,3 +805,4 @@ window.onload = init;
 // add listener for keyboard commands (down are better for hold commands)
 window.addEventListener("keydown", keyDownListener, false);
 window.addEventListener("keyup", keyUpListener, false);
+window.addEventListener("mouseup", performRaycast);
