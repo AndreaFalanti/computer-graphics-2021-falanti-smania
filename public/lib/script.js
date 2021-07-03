@@ -20,27 +20,29 @@ let eKeyDown = false;
 let qKeyDown = false;
 
 //#region Program attributes
+// Program 0 -- Lambert & Phong/Blinn
 let p0a_positionAttributeLocation, p0a_uvAttributeLocation, p0a_normalAttributeLocation;
+
+// Program 1 -- Plain Color
 let p1a_positionAttributeLocation, p1a_normalAttributeLocation;
+
+// Program 2 -- Skybox
 let p2a_skyboxVertPosAttr;
-let p3a_positionAttributeLocation, p3a_uvAttributeLocation, p3a_normalAttributeLocation;
 //#endregion
 
 //#region Program uniforms
-// Program 0 -- Lambert & Phong
+// Program 0 -- Lambert & Phong/Blinn
 let p0u_wvpMatrixLocation, p0u_textureLocation, p0u_nMatrixLocation, p0u_wMatrixLocation,
     p0u_lightDirLocation, p0u_lightColorLocation, p0u_ambientLightColorLocation, p0u_cameraPosLocation,
     p0u_specularColorLocation, p0u_specularGammaLocation, p0u_metallicLocation, p0u_lightTypeLocation,
-    p0u_lightPosLocation, p0u_spotLightDirLocation, p0u_coneInLocation, p0u_coneOutLocation, 
-    p0u_decayLocation, p0u_targetLocation;
-    
-let p1u_wvpMatrixLocation, p1u_materialDiffColorHandle, p1u_lightDirectionHandle, p1u_lightColorHandle, p1u_normalMatrixPositionHandle;
-let p2u_skyboxTexHandle, p2u_inverseViewProjMatrixHandle;
+    p0u_specularTypeLocation, p0u_lightPosLocation, p0u_spotLightDirLocation, p0u_coneInLocation, 
+    p0u_coneOutLocation, p0u_decayLocation, p0u_targetLocation;
 
-// Program 3 -- Lambert & Blinn
-let p3u_wvpMatrixLocation, p3u_textureLocation, p3u_nMatrixLocation, p3u_wMatrixLocation,
-    p3u_lightDirLocation, p3u_lightColorLocation, p3u_ambientLightColorLocation, p3u_cameraPosLocation,
-    p3u_specularColorLocation, p3u_specularGammaLocation, p3u_metallicLocation;
+// Program 1 -- Plain Color
+let p1u_wvpMatrixLocation, p1u_materialDiffColorHandle, p1u_lightDirectionHandle, p1u_lightColorHandle, p1u_normalMatrixPositionHandle;
+
+// Program 2 -- Skybox
+let p2u_skyboxTexHandle, p2u_inverseViewProjMatrixHandle;
 //#endregion
 
 // skybox
@@ -52,6 +54,7 @@ let selectedGraphicsIndex = 0;
 
 // Light values for uniforms
 let lightType = [1.0, 0.0, 0.0];
+let specularType = [1.0, 0.0];
 
 const lightPos = [0.0, 3.0, 0.0];
 const directionalLightDir = [2.0, -2.0, -2.0];
@@ -93,8 +96,13 @@ function deactivateMoles() {
     moles.forEach(el => el.deactivate());
 }
 
-function changeGraphics(val) {
-    selectedGraphicsIndex = val;
+function changeGraphics(value) {
+    if (value == 0) {
+        specularType = [1.0, 0.0];
+    }
+    else if (value == 1) {
+        specularType = [0.0, 1.0];
+    }
 }
 
 function resizeCanvasToDisplaySize() {
@@ -110,7 +118,7 @@ function resizeCanvasToDisplaySize() {
 //#region GET ATTRIBUTES AND UNIFORMS
 function getProgramAttributeLocations() {
 
-    // Program 0 -- Lambert & Phong
+    // Program 0 -- Lambert & Phong/Blinn
     p0a_positionAttributeLocation = gl.getAttribLocation(programs[0], "a_position");
     p0a_uvAttributeLocation = gl.getAttribLocation(programs[0], "a_uv");
     p0a_normalAttributeLocation = gl.getAttribLocation(programs[0], "a_normal");
@@ -121,16 +129,11 @@ function getProgramAttributeLocations() {
 
     // Program 2 -- Skybox
     p2a_skyboxVertPosAttr = gl.getAttribLocation(programs[2], "in_position");
-
-    // Program 3 -- Lambert & Blinn
-    p3a_positionAttributeLocation = gl.getAttribLocation(programs[3], "a_position");
-    p3a_uvAttributeLocation = gl.getAttribLocation(programs[3], "a_uv");
-    p3a_normalAttributeLocation = gl.getAttribLocation(programs[3], "a_normal");
 }
 
 function getProgramUniformLocations() {
 
-    // Program 0 -- Lambert & Phong
+    // Program 0 -- Lambert & Phong/Blinn
     p0u_wvpMatrixLocation = gl.getUniformLocation(programs[0], "u_wvpMatrix");
     p0u_nMatrixLocation = gl.getUniformLocation(programs[0], "u_nMatrix");
     p0u_wMatrixLocation = gl.getUniformLocation(programs[0], "u_wMatrix");
@@ -141,6 +144,7 @@ function getProgramUniformLocations() {
     p0u_ambientLightColorLocation = gl.getUniformLocation(programs[0], "u_ambientLightColor");
     p0u_spotLightDirLocation = gl.getUniformLocation(programs[0], "u_spotLightDir");
     p0u_lightTypeLocation = gl.getUniformLocation(programs[0], "u_lightType");
+    p0u_specularTypeLocation = gl.getUniformLocation(programs[0], "u_specularType");
     p0u_lightPosLocation = gl.getUniformLocation(programs[0], "u_lightPos");
 
     p0u_specularColorLocation = gl.getUniformLocation(programs[0], "u_specularColor");
@@ -161,18 +165,6 @@ function getProgramUniformLocations() {
     // Program 2 -- Skybox
     p2u_skyboxTexHandle = gl.getUniformLocation(programs[2], "u_texture"); 
     p2u_inverseViewProjMatrixHandle = gl.getUniformLocation(programs[2], "inverseViewProjMatrix");
-
-    // Program 3 -- Lambert & Blinn
-    p3u_wvpMatrixLocation = gl.getUniformLocation(programs[3], "u_wvpMatrix");
-    p3u_nMatrixLocation = gl.getUniformLocation(programs[3], "u_nMatrix");
-    p3u_wMatrixLocation = gl.getUniformLocation(programs[3], "u_wMatrix");
-    p3u_textureLocation = gl.getUniformLocation(programs[3], "u_texture");
-    p3u_lightDirLocation = gl.getUniformLocation(programs[3], "u_lightDir");
-    p3u_lightColorLocation = gl.getUniformLocation(programs[3], "u_lightColor");
-    p3u_ambientLightColorLocation = gl.getUniformLocation(programs[3], "u_ambientLightColor");
-    p3u_specularColorLocation = gl.getUniformLocation(programs[3], "u_specularColor");
-    p3u_specularGammaLocation = gl.getUniformLocation(programs[3], "u_specularGamma");
-    p3u_metallicLocation = gl.getUniformLocation(programs[3], "u_metallic"); 
 }
 //#endregion
 
@@ -224,16 +216,13 @@ async function main() {
 
     // create the VAOs and the SceneNodes
     let drawInfo0 = createVaoP0(cabinetModel.vertices, cabinetModel.uv, cabinetModel.normals, cabinetModel.indices, t1);
-    let drawInfo3 = createVaoP3(cabinetModel.vertices, cabinetModel.uv, cabinetModel.normals, cabinetModel.indices, t1);
-    let cabinetNode = new SceneNode(utils.identityMatrix(), [drawInfo0, drawInfo3]);
+    let cabinetNode = new SceneNode(utils.identityMatrix(), [drawInfo0]);
 
     drawInfo0 = createVaoP0(hammerModel.vertices, hammerModel.uv, hammerModel.normals, hammerModel.indices, t1, false);
-    drawInfo3 = createVaoP3(hammerModel.vertices, hammerModel.uv, hammerModel.normals, hammerModel.indices, t1, false);
     hammer = new Hammer();
-    let hammerNode = new SceneNode(hammer.defaultPosition, [drawInfo0, drawInfo3]);
+    let hammerNode = new SceneNode(hammer.defaultPosition, [drawInfo0]);
 
     drawInfo0 = createVaoP0(moleModel.vertices, moleModel.uv, moleModel.normals, moleModel.indices, t1, false);
-    drawInfo3 = createVaoP3(moleModel.vertices, moleModel.uv, moleModel.normals, moleModel.indices, t1, false);
 
     moles.push(new Mole(-0.65, 0.2, false));        // left-back
     moles.push(new Mole(-0.32, 0.625, true));       // left-front
@@ -242,15 +231,15 @@ async function main() {
     moles.push(new Mole(0.65, 0.2, false));         // right-back
 
     // left
-    let moleNode1 = new SceneNode(moles[0].getLocalMatrix(), [drawInfo0, drawInfo3]);     // back
-    let moleNode2 = new SceneNode(moles[1].getLocalMatrix(), [drawInfo0, drawInfo3]);     // front
+    let moleNode1 = new SceneNode(moles[0].getLocalMatrix(), [drawInfo0]);     // back
+    let moleNode2 = new SceneNode(moles[1].getLocalMatrix(), [drawInfo0]);     // front
     
     // center
-    let moleNode3 = new SceneNode(moles[2].getLocalMatrix(), [drawInfo0, drawInfo3]);
+    let moleNode3 = new SceneNode(moles[2].getLocalMatrix(), [drawInfo0]);
 
     // right
-    let moleNode4 = new SceneNode(moles[3].getLocalMatrix(), [drawInfo0, drawInfo3]);     // front
-    let moleNode5 = new SceneNode(moles[4].getLocalMatrix(), [drawInfo0, drawInfo3]);     // back
+    let moleNode4 = new SceneNode(moles[3].getLocalMatrix(), [drawInfo0]);     // front
+    let moleNode5 = new SceneNode(moles[4].getLocalMatrix(), [drawInfo0]);     // back
     
     moleNode1.setParent(cabinetNode);
     moleNode2.setParent(cabinetNode);
@@ -639,6 +628,7 @@ function drawScene() {
                 gl.uniform3fv(p0u_ambientLightColorLocation, ambientLightColor);
                 gl.uniform3fv(p0u_spotLightDirLocation, spotLightDir);
                 gl.uniform3fv(p0u_lightTypeLocation, lightType);
+                gl.uniform2fv(p0u_specularTypeLocation, specularType);
                 gl.uniform3fv(p0u_lightPosLocation, lightPos);
 
                 gl.uniform3fv(p0u_cameraPosLocation, cameraPos);
@@ -663,27 +653,6 @@ function drawScene() {
                 // TODO: light hardcoded for test
                 gl.uniform3fv(p1u_lightColorHandle, [1.0, 1.0, 1.0]);
                 gl.uniform3fv(p1u_lightDirectionHandle, [-1.0, 0.0, 0.0]);
-                break;
-            case programs[3]:
-                //vs
-                gl.uniformMatrix4fv(p3u_wvpMatrixLocation, gl.FALSE, utils.transposeMatrix(worldViewProjectionMatrix));
-                gl.uniformMatrix4fv(p3u_nMatrixLocation, gl.FALSE, utils.transposeMatrix(normalMatrix));
-                gl.uniformMatrix4fv(p3u_wMatrixLocation, gl.FALSE, utils.transposeMatrix(el.worldMatrix));
-
-                //fs
-                gl.uniform3fv(p3u_lightDirLocation, directionalLightDirTransformed);
-                gl.uniform3fv(p3u_lightColorLocation, directionalLightColor);
-                gl.uniform3fv(p3u_ambientLightColorLocation, ambientLightColor);
-
-                gl.uniform3fv(p3u_cameraPosLocation, cameraPos);
-                gl.uniform3fv(p3u_specularColorLocation, specularColor);
-                gl.uniform1f(p3u_specularGammaLocation, specularGamma);
-
-                gl.activeTexture(gl.TEXTURE0);
-                gl.bindTexture(gl.TEXTURE_2D, activeDrawInfo.texture);
-                gl.uniform1i(p3u_textureLocation, 0);
-
-                gl.uniform1i(p3u_metallicLocation, activeDrawInfo.uniforms.metallic);
                 break;
             default:
                 console.log('Invalid program, can\'t assign attributes and uniforms');
@@ -720,10 +689,9 @@ async function init() {
         return;
     }
 
-    programs.push(await generateProgram(shadersDir + 'lambert-phong/'));   // 0: lambert reflection, phong specular
+    programs.push(await generateProgram(shadersDir + 'lambert-phong&blinn/'));   // 0: lambert reflection, phong specular
     programs.push(await generateProgram(shadersDir + 'plainColor/')); // 1: plain diffuse
     programs.push(await generateProgram(shadersDir + 'skybox/')); // 2: skybox
-    programs.push(await generateProgram(shadersDir + 'lambert-blinn/'));   // 3: lambert reflection, blinn specular
 
     gl.useProgram(programs[0]);
 
