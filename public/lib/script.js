@@ -9,9 +9,15 @@ const shadersDir = 'shaders/'
 
 let perspectiveMatrix = [];
 let viewMatrix = [];
+
+// Camera related
 let cameraPos = [];
 let cameraX = 0.0;
 const CAMERA_X_MAX = 1.5;
+const CAMERA_DELTA = 0.035;
+// For regulating camera with same framerate of scene (keyDown listener is slow, giving terribly laggy experience)
+let eKeyDown = false;
+let qKeyDown = false;
 
 //#region Program attributes
 let p0a_positionAttributeLocation, p0a_uvAttributeLocation, p0a_normalAttributeLocation;
@@ -592,6 +598,7 @@ function drawScene() {
 
     // update the local matrices for each object
     animate();
+    regulateCamera();
 
     //update world matrixes of each object group
     sceneRoots.forEach(el => el.updateWorldMatrix());
@@ -814,13 +821,23 @@ function performRaycast(e){
     }
 }
 
+function regulateCamera() {
+    if (qKeyDown) {
+        cameraX = utils.clamp(cameraX - CAMERA_DELTA, -CAMERA_X_MAX, CAMERA_X_MAX);
+    }
+    // no else-if, so if both are down they cancel each other
+    if (eKeyDown) {
+        cameraX = utils.clamp(cameraX + CAMERA_DELTA, -CAMERA_X_MAX, CAMERA_X_MAX);
+    }
+}
+
 function keyDownListener(e){
     switch (e.code) {
         case 'KeyQ':
-            cameraX = utils.clamp(cameraX - 0.05, -CAMERA_X_MAX, CAMERA_X_MAX);
+            qKeyDown = true;
             break;
         case 'KeyE':
-            cameraX = utils.clamp(cameraX + 0.05, -CAMERA_X_MAX, CAMERA_X_MAX);
+            eKeyDown = true;
             break;
         case 'KeyW':
             sceneRoots[1].localMatrix = hammer.changeCurrentPosition(-1);
@@ -841,6 +858,12 @@ function keyDownListener(e){
 
 function keyUpListener(e){
     switch (e.code) {
+        case 'KeyQ':
+            qKeyDown = false;
+            break;
+        case 'KeyE':
+            eKeyDown = false;
+            break;
         case 'Enter':
         case 'Space':
             // this flag will trigger the animation in animate(), the logic is handled by the class
