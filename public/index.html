@@ -37,12 +37,12 @@
     </div>
 
     <div class="options">
-      <!--Difficulty options-->
-      <div class="subtitle">Difficulty</div>
-      <select id="difficulty-dropdown" class="dropdowns menu-button">
-        <option value="1" selected>Easy</option>
-        <option value="2">Normal</option>
-        <option value="3">Hard</option>
+      <!--Light options-->
+      <div class="subtitle">Light</div>
+      <select id="difficulty-dropdown" class="dropdowns menu-button" onchange="setActiveLight(this.value)">
+        <option value="1" selected>Direct</option>
+        <option value="2">Point</option>
+        <option value="3">Spot</option>
       </select>
     </div>
 

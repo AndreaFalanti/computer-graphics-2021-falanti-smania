@@ -21,7 +21,9 @@ let p3a_positionAttributeLocation, p3a_uvAttributeLocation, p3a_normalAttributeL
 // Program 0 -- Lambert & Phong
 let p0u_wvpMatrixLocation, p0u_textureLocation, p0u_nMatrixLocation, p0u_wMatrixLocation,
     p0u_lightDirLocation, p0u_lightColorLocation, p0u_ambientLightColorLocation, p0u_cameraPosLocation,
-    p0u_specularColorLocation, p0u_specularGammaLocation, p0u_metallicLocation;
+    p0u_specularColorLocation, p0u_specularGammaLocation, p0u_metallicLocation, p0u_lightTypeLocation,
+    p0u_lightPosLocation, p0u_spotLightDirLocation, p0u_coneInLocation, p0u_coneOutLocation, 
+    p0u_decayLocation, p0u_targetLocation;
     
 let p1u_wvpMatrixLocation, p1u_materialDiffColorHandle, p1u_lightDirectionHandle, p1u_lightColorHandle, p1u_normalMatrixPositionHandle;
 let p2u_skyboxTexHandle, p2u_inverseViewProjMatrixHandle;
@@ -39,13 +41,21 @@ let activeSkyboxIndex = 0;
 
 let selectedGraphicsIndex = 0;
 
-// lights
+// Light values for uniforms
+let lightType = [1.0, 0.0, 0.0];
+
+const lightPos = [0.0, 3.0, 0.0];
 const directionalLightDir = [2.0, -2.0, -2.0];
 const directionalLightColor = [1.0, 1.0, 1.0];
 const ambientLightColor = [0.1, 0.1, 0.1];
+const spotLightDir = [0.0, -5.0, 0.0];
 
 const specularColor = [1.0, 1.0, 1.0];
 const specularGamma = 24.0;
+const coneIn = 20;
+const coneOut = 25;
+const decay = 0;
+const target = 61;
 
 // TODO: textures and VAOs arrays are probably useless, because now references are stored in sceneNode
 let textures = [];
@@ -84,17 +94,19 @@ function changeGraphics(val) {
 //#region GET ATTRIBUTES AND UNIFORMS
 function getProgramAttributeLocations() {
 
-    // Program 0 -- Lambert & Phong, direct light
+    // Program 0 -- Lambert & Phong
     p0a_positionAttributeLocation = gl.getAttribLocation(programs[0], "a_position");
     p0a_uvAttributeLocation = gl.getAttribLocation(programs[0], "a_uv");
     p0a_normalAttributeLocation = gl.getAttribLocation(programs[0], "a_normal");
 
+    // Program 1 -- Plain Colors
     p1a_positionAttributeLocation = gl.getAttribLocation(programs[1], "a_position");  
     p1a_normalAttributeLocation = gl.getAttribLocation(programs[1], "a_normal");
 
+    // Program 2 -- Skybox
     p2a_skyboxVertPosAttr = gl.getAttribLocation(programs[2], "in_position");
 
-    // Program 3 -- Lambert & Blinn, direct light
+    // Program 3 -- Lambert & Blinn
     p3a_positionAttributeLocation = gl.getAttribLocation(programs[3], "a_position");
     p3a_uvAttributeLocation = gl.getAttribLocation(programs[3], "a_uv");
     p3a_normalAttributeLocation = gl.getAttribLocation(programs[3], "a_normal");
@@ -102,29 +114,39 @@ function getProgramAttributeLocations() {
 
 function getProgramUniformLocations() {
 
-    // Program 0
+    // Program 0 -- Lambert & Phong
     p0u_wvpMatrixLocation = gl.getUniformLocation(programs[0], "u_wvpMatrix");
     p0u_nMatrixLocation = gl.getUniformLocation(programs[0], "u_nMatrix");
     p0u_wMatrixLocation = gl.getUniformLocation(programs[0], "u_wMatrix");
     p0u_textureLocation = gl.getUniformLocation(programs[0], "u_texture");
+
     p0u_lightDirLocation = gl.getUniformLocation(programs[0], "u_lightDir");
     p0u_lightColorLocation = gl.getUniformLocation(programs[0], "u_lightColor");
     p0u_ambientLightColorLocation = gl.getUniformLocation(programs[0], "u_ambientLightColor");
+    p0u_spotLightDirLocation = gl.getUniformLocation(programs[0], "u_spotLightDir");
+    p0u_lightTypeLocation = gl.getUniformLocation(programs[0], "u_lightType");
+    p0u_lightPosLocation = gl.getUniformLocation(programs[0], "u_lightPos");
+
     p0u_specularColorLocation = gl.getUniformLocation(programs[0], "u_specularColor");
     p0u_specularGammaLocation = gl.getUniformLocation(programs[0], "u_specularGamma");
-    p0u_metallicLocation = gl.getUniformLocation(programs[0], "u_metallic"); 
+    p0u_metallicLocation = gl.getUniformLocation(programs[0], "u_metallic");
+    p0u_coneInLocation = gl.getUniformLocation(programs[0], "u_coneIn");
+    p0u_coneOutLocation = gl.getUniformLocation(programs[0], "u_coneOut");
+    p0u_decayLocation = gl.getUniformLocation(programs[0], "u_decay");
+    p0u_targetLocation = gl.getUniformLocation(programs[0], "u_target");
 
-
+    // Program 1 -- Plain Colors
     p1u_wvpMatrixLocation = gl.getUniformLocation(programs[1], "u_wvpMatrix");
     p1u_materialDiffColorHandle = gl.getUniformLocation(programs[1], 'mDiffColor');
     p1u_lightDirectionHandle = gl.getUniformLocation(programs[1], 'lightDirection');
     p1u_lightColorHandle = gl.getUniformLocation(programs[1], 'lightColor');
     p1u_normalMatrixPositionHandle = gl.getUniformLocation(programs[1], 'u_nMatrix');
 
+    // Program 2 -- Skybox
     p2u_skyboxTexHandle = gl.getUniformLocation(programs[2], "u_texture"); 
     p2u_inverseViewProjMatrixHandle = gl.getUniformLocation(programs[2], "inverseViewProjMatrix");
 
-    // Program 3
+    // Program 3 -- Lambert & Blinn
     p3u_wvpMatrixLocation = gl.getUniformLocation(programs[3], "u_wvpMatrix");
     p3u_nMatrixLocation = gl.getUniformLocation(programs[3], "u_nMatrix");
     p3u_wMatrixLocation = gl.getUniformLocation(programs[3], "u_wMatrix");
@@ -141,6 +163,18 @@ function getProgramUniformLocations() {
 // called from HTML dropdown (onChange)
 function setActiveSkybox(value) {
     activeSkyboxIndex = value;
+}
+
+function setActiveLight(value) {
+    if (value == 1) {
+        lightType = [1.0, 0.0, 0.0];
+    }
+    else if (value == 2) {
+        lightType = [0.0, 1.0, 0.0];
+    }
+    else if (value == 3) {
+        lightType = [0.0, 0.0, 1.0];
+    }
 }
 
 async function main() {
@@ -586,10 +620,17 @@ function drawScene() {
                 gl.uniform3fv(p0u_lightDirLocation, directionalLightDirTransformed);
                 gl.uniform3fv(p0u_lightColorLocation, directionalLightColor);
                 gl.uniform3fv(p0u_ambientLightColorLocation, ambientLightColor);
+                gl.uniform3fv(p0u_spotLightDirLocation, spotLightDir);
+                gl.uniform3fv(p0u_lightTypeLocation, lightType);
+                gl.uniform3fv(p0u_lightPosLocation, lightPos);
 
                 gl.uniform3fv(p0u_cameraPosLocation, cameraPos);
                 gl.uniform3fv(p0u_specularColorLocation, specularColor);
                 gl.uniform1f(p0u_specularGammaLocation, specularGamma);
+                gl.uniform1f(p0u_coneInLocation, coneIn);
+                gl.uniform1f(p0u_coneOutLocation, coneOut);
+                gl.uniform1f(p0u_decayLocation, decay);
+                gl.uniform1f(p0u_targetLocation, target);
 
                 gl.activeTexture(gl.TEXTURE0);
                 gl.bindTexture(gl.TEXTURE_2D, activeDrawInfo.texture);
