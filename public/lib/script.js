@@ -91,6 +91,16 @@ function changeGraphics(val) {
     selectedGraphicsIndex = val;
 }
 
+function resizeCanvasToDisplaySize() {
+    let width = gl.canvas.clientWidth;
+    let height = gl.canvas.clientHeight;
+    if (gl.canvas.width != width || gl.canvas.height != height) {
+        gl.canvas.width = width;
+        gl.canvas.height = height;
+        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    }
+}
+
 //#region GET ATTRIBUTES AND UNIFORMS
 function getProgramAttributeLocations() {
 
@@ -178,8 +188,12 @@ function setActiveLight(value) {
 }
 
 async function main() {
-    // expand and add listener for auto resize
-    utils.resizeCanvasToDisplaySize(gl.canvas);
+    // setup the webGL context
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.CULL_FACE);
 
     createSkyboxVAO();
     // skybox must be loaded before inverting UV system
@@ -189,12 +203,6 @@ async function main() {
 
     // flip Y axis in texture coordinates
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-    gl.clearColor(0, 0, 0, 0);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    gl.enable(gl.DEPTH_TEST);
-    gl.enable(gl.CULL_FACE);
 
     getProgramAttributeLocations();
     getProgramUniformLocations();
@@ -580,6 +588,8 @@ function drawSkybox(viewProjectionMatrix, skyboxTexture){
 }
 
 function drawScene() {
+    resizeCanvasToDisplaySize();
+
     // update the local matrices for each object
     animate();
 
@@ -587,7 +597,7 @@ function drawScene() {
     sceneRoots.forEach(el => el.updateWorldMatrix());
 
     // compute scene matrices (shared by all objects)
-    perspectiveMatrix = utils.MakePerspective(90, gl.canvas.width / gl.canvas.height, 0.1, 100.0);
+    perspectiveMatrix = utils.MakePerspective(90, gl.canvas.clientWidth / gl.canvas.clientHeight, 0.1, 100.0);
     cameraPos = [cameraX, 2.2, 3.0];
     viewMatrix = utils.MakeLookAt(cameraPos, [0.0, 1.8, 0.0], [0.0, 1.0, 0.0]);
     let viewProjectionMatrix = utils.multiplyMatrices(perspectiveMatrix, viewMatrix);
