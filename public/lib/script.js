@@ -346,54 +346,6 @@ function createVaoP0(vertices, uv, normals, indices, glTexture, metallic = false
     }
 }
 
-/**
- * Create VAO for program3, returning node drawInfo
- * @param {number[]} vertices 
- * @param {number[]} uv 
- * @param {number[]} normals 
- * @param {number[]} indices 
- * @param {WebGLTexture} glTexture
- * @param {metallic} metallic is this object metallic? 
- * @returns {{ materialColor: number[], texture: WebGLTexture, programInfo: WebGLProgram, bufferLength: number, vertexArray: WebGLVertexArrayObject}} drawInfo
- */
-function createVaoP3(vertices, uv, normals, indices, glTexture, metallic = false) {
-    gl.useProgram(programs[3]);
-    let vao = gl.createVertexArray();
-    vaoArray.push(vao);
-    gl.bindVertexArray(vao);
-
-    let positionBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(p3a_positionAttributeLocation);
-    gl.vertexAttribPointer(p3a_positionAttributeLocation, 3, gl.FLOAT, false, 0, 0);
-
-    let uvBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uv), gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(p3a_uvAttributeLocation);
-    gl.vertexAttribPointer(p3a_uvAttributeLocation, 2, gl.FLOAT, false, 0, 0);
-
-    let normalBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(p3a_normalAttributeLocation);
-    gl.vertexAttribPointer(p3a_normalAttributeLocation, 3, gl.FLOAT, false, 0, 0);
-
-    let indexBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
-
-    return {
-        materialColor: null,
-        texture: glTexture,
-        programInfo : programs[3],
-        bufferLength: indices.length,
-        vertexArray: vao,
-        uniforms: { 'metallic': metallic }
-    }
-}
-
 function createSkyboxVAO() {
     let skyboxVertPos = new Float32Array([
         -1, -1, 1.0,
