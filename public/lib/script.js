@@ -250,6 +250,9 @@ async function main() {
     sceneRoots.push(cabinetNode, hammerNode);
     sceneObjects.push(cabinetNode, hammerNode, moleNode1, moleNode2, moleNode3, moleNode4, moleNode5);
 
+    // in game.js
+    await loadAudioAssets();
+
     drawScene();
 }
 

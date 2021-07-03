@@ -8,8 +8,32 @@ let playing = false;
 let score = 0;
 let highscore = 0;
 
+const audioDir = 'assets/audio/';
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 const audioCtx = new AudioContext();
+
+let hammerSound;
+
+async function loadAudioFile(filepath) {
+    const response = await fetch(filepath);
+    const arrayBuffer = await response.arrayBuffer();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    return audioBuffer;
+}
+
+async function loadAudioAssets() {
+    hammerSound = await loadAudioFile(audioDir + 'hammer.mp3');
+}
+
+function playSound(audioBuffer) {
+    const trackSource = audioCtx.createBufferSource();
+    trackSource.buffer = audioBuffer;
+    trackSource.connect(audioCtx.destination)
+  
+    trackSource.start();
+  
+    return trackSource;
+  }
 
 //#region Timer functions
 function setTimer(value) {
@@ -74,6 +98,7 @@ function handlePossibleHammerHit(hammer, moles) {
     let targetMole = moles[hammer.currentPosition];
     if (targetMole.hittable && playing) {
         // TODO: play sound
+        playSound(hammerSound);
         targetMole.onHit();
         score += 100;
         // update UI
