@@ -6,6 +6,10 @@ let timerID = timeLimit;
 let playing = false;
 
 let score = 0;
+let highscore = 0;
+
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+const audioCtx = new AudioContext();
 
 //#region Timer functions
 function setTimer(value) {
@@ -38,6 +42,7 @@ function startTimer() {
             if (timeLeft === 0) {
                 clearInterval(timerID);
                 togglePlayingStatus();
+                setHighScore();
             }
         }, 1000);
     }
@@ -74,6 +79,12 @@ function handlePossibleHammerHit(hammer, moles) {
         // update UI
         document.getElementById("score-text").innerHTML = `Score: ${score}`;
     }
+    // miss, reduce points
+    else if (!targetMole.hittable && playing) {
+        score -= 25;
+        // update UI
+        document.getElementById("score-text").innerHTML = `Score: ${score}`;
+    }
 }
 
 function startGame() {
@@ -87,6 +98,13 @@ function startGame() {
 function resetGame() {
     resetTimer(timerID);
     togglePlayingStatus();
+}
+
+function setHighScore() {
+    if (score > highscore) {
+        highscore = score;
+        document.getElementById("best-score-text").innerHTML = `Highscore: ${highscore}`;
+    }
 }
 
 function togglePlayingStatus() {

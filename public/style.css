@@ -114,7 +114,7 @@ option {
     justify-content: space-between;
 }
 
-#score-text {
+#score-text, #best-score-text {
     color: #ffffff;
     text-align: center;
 }
