@@ -10,7 +10,7 @@ let score = 0;
 //#region Timer functions
 function setTimer(value) {
     // If the timer is running, don't do anything
-    if (playing == true) {
+    if (playing) {
         alert("You cannot change options while game is running!");
         return;
     }
@@ -23,7 +23,7 @@ function setTimer(value) {
 
 function startTimer() {
     // If the timer is running, don't do anything
-    if (playing === true) {
+    if (playing) {
         console.log("Timer running, 'Start' had no effect");
         return;
     }
@@ -90,11 +90,11 @@ function resetGame() {
 }
 
 function togglePlayingStatus() {
-    playing = !playing
+    playing = !playing;
 
     // in script.js
-    if (playing) activateMoles()
-    else deactivateMoles()
+    if (playing) activateMoles();
+    else deactivateMoles();
 
     document.getElementById("start-button").disabled = playing;
     document.getElementById("reset-button").disabled = !playing;

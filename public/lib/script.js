@@ -775,15 +775,15 @@ function performRaycast(e){
         left += glCanvas.offsetLeft;
         glCanvas = glCanvas.offsetParent;
     }
-    console.log(`left: ${left}, top: ${top}`);
+    //console.log(`left: ${left}, top: ${top}`);
     let x = e.clientX - left;
     let y = e.clientY - top;
         
     //Here we calculate the normalised device coordinates from the pixel coordinates of the canvas
-    console.log(`Client X: ${x}, Client Y: ${y}`);
+    //console.log(`Client X: ${x}, Client Y: ${y}`);
     let normX = (2*x)/ gl.canvas.width - 1;
     let normY = 1 - (2*y) / gl.canvas.height;
-    console.log(`NormX: ${normX}, NormY: ${normY}`);
+    //console.log(`NormX: ${normX}, NormY: ${normY}`);
 
     //We need to go through the transformation pipeline in the inverse order so we invert the matrices
     let projInv = utils.invertMatrix(perspectiveMatrix);
@@ -793,7 +793,7 @@ function performRaycast(e){
     //z = -1 makes it so the point is on the near plane
     //w = 1 is for the homogeneous coordinates in clip space
     let pointEyeCoords = utils.multiplyMatrixVector(projInv, [normX, normY, -1, 1]);
-    console.log("Point eye coords: " + pointEyeCoords);
+    //console.log("Point eye coords: " + pointEyeCoords);
 
     //This finds the direction of the ray in eye space
     //Formally, to calculate the direction you would do dir = point - eyePos but since we are in eye space eyePos = [0,0,0] 
@@ -803,20 +803,25 @@ function performRaycast(e){
     
     //We find the direction expressed in world coordinates by multipling with the inverse of the view matrix
     let rayDir = utils.multiplyMatrixVector(viewInv, rayEyeCoords);
-    console.log("Ray direction: " + rayDir);
+    //console.log("Ray direction: " + rayDir);
     // TODO: from 4 to 3 vector, but should not be a problem
     let normalisedRayDir = utils.normalizeVector3(rayDir);
-    console.log("Normalised ray dir: " + normalisedRayDir);
+    //console.log("Normalised ray dir: " + normalisedRayDir);
     //The ray starts from the camera in world coordinates
     let rayStartPoint = cameraPos;
     
     //Iterate on all moles in the scene to check for collisions
     // TODO: avoid multiple collisions or check for the nearest one
-    for(let i = 0; i < moles.length; i++){
-        let cylinderInfo = moles[i].cylinderMesh;
-        let hit = rayCylinderIntersection(rayStartPoint, normalisedRayDir, cylinderInfo.base, cylinderInfo.axis, cylinderInfo.radius);
-        if (hit){
-            console.log("Raycast hit mole number: " + i);
+    let hit = false;
+    let raycastMoleIndexes = [1, 3, 0, 2, 4];   // Process the front row moles first (odd indexes), then the back row moles (even indexes)
+
+    for(let i = 0; i < moles.length && !hit; i++) {
+        let index = raycastMoleIndexes[i];
+        let cylinderInfo = moles[index].cylinderMesh;
+        hit = rayCylinderIntersection(rayStartPoint, normalisedRayDir, cylinderInfo.base, cylinderInfo.axis, cylinderInfo.radius);
+        if (hit) {
+            console.log("Raycast hit mole number: " + index);
+            sceneRoots[1].localMatrix = hammer.setPosition(index);
         }
     }
 }
@@ -866,8 +871,8 @@ function keyUpListener(e){
             break;
         case 'Enter':
         case 'Space':
-            // this flag will trigger the animation in animate(), the logic is handled by the class
-            hammer.swinging = true;
+            // this flag will trigger the animation in animate(), the logic is handled by the class. Swing hammer only if playing (playing is defined in game.js).
+            hammer.swinging = playing;
             break;
         default:
             break;
@@ -879,4 +884,5 @@ window.onload = init;
 // add listener for keyboard commands (down are better for hold commands)
 window.addEventListener("keydown", keyDownListener, false);
 window.addEventListener("keyup", keyUpListener, false);
-window.addEventListener("mouseup", performRaycast);
+window.addEventListener("mouseup", () => hammer.swinging = playing);
+window.addEventListener("mousemove", performRaycast);

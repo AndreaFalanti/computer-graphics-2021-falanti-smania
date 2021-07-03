@@ -24,6 +24,11 @@ class Hammer {
         this.hitting = false;
     }
 
+    /**
+     * Change current hammer position based on provided index delta change. Used with keyboard commands.
+     * @param {number} value Delta position, compared to current one
+     * @returns {number[]} World matrix
+     */
     changeCurrentPosition(value) {
         let newPos = this.currentPosition + value;
 
@@ -40,6 +45,16 @@ class Hammer {
             console.log("Position changed to mole ", this.currentPosition);
         }
         
+        return hammerPositions[this.currentPosition];
+    }
+
+    /**
+     * Change current hammer position based on given position index value. Used with raycast.
+     * @param {number} value Position index
+     * @returns {number[]} World matrix 
+     */
+    setPosition(value) {
+        this.currentPosition = value;
         return hammerPositions[this.currentPosition];
     }
 
