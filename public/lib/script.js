@@ -56,18 +56,18 @@ let selectedGraphicsIndex = 0;
 let lightType = [1.0, 0.0, 0.0];
 let specularType = [1.0, 0.0];
 
-const lightPos = [0.0, 3.0, 1.0, 1.0];
+const lightPos = [0.0, 3.0, 2.0, 1.0];
 const directionalLightDir = [1.0, -1.0, -1.0];
 const directionalLightColor = [1.0, 1.0, 1.0];
 const ambientLightColor = [0.1, 0.1, 0.1];
-const spotLightDir = [0.0, -2.5, -1.0];
+const spotLightDir = [0.0, -1.5, -1.0];
 
 const specularColor = [1.0, 1.0, 1.0];
 const specularGamma = 24.0;
-const coneIn = 40;
-const coneOut = 50;
-const decay = 0;
-const target = 61;
+const coneIn = 30;
+const coneOut = 40;
+const decay = 1;
+const target = 2.2;
 
 // TODO: textures and VAOs arrays are probably useless, because now references are stored in sceneNode
 let textures = [];
@@ -211,7 +211,7 @@ async function main() {
     // load the models
     let cabinetModel = await loadModel('cabinet.obj');
     let hammerModel = await loadModel('hammer.obj');
-    console.log("Hammer: ", hammerModel);
+    //console.log("Hammer: ", hammerModel);
     let moleModel = await loadModel('mole.obj');
 
     // create the VAOs and the SceneNodes
@@ -246,6 +246,10 @@ async function main() {
     moleNode3.setParent(cabinetNode);
     moleNode4.setParent(cabinetNode);
     moleNode5.setParent(cabinetNode);
+
+    // lightPos debug
+    // let moleNode6 = new SceneNode(utils.MakeTranslateMatrix(...lightPos.slice(0, 3)), [drawInfo0]);
+    // console.log(moleNode6.localMatrix);
 
     sceneRoots.push(cabinetNode, hammerNode);
     sceneObjects.push(cabinetNode, hammerNode, moleNode1, moleNode2, moleNode3, moleNode4, moleNode5);
@@ -568,7 +572,6 @@ function drawScene() {
 
         // Transform light position from world to camera space
         let lightPosTransformed = utils.multiplyMatrixVector(viewMatrix, lightPos);
-        console.log(lightPosTransformed);
         
         // Matrix used to compute normals -- invertion of world-view matrix
         let normalMatrix = utils.invertMatrix(utils.transposeMatrix(worldViewMatrix));
@@ -749,7 +752,7 @@ function performRaycast(e){
         let cylinderInfo = moles[index].cylinderMesh;
         hit = rayCylinderIntersection(rayStartPoint, normalisedRayDir, cylinderInfo.base, cylinderInfo.axis, cylinderInfo.radius);
         if (hit) {
-            console.log("Raycast hit mole number: " + index);
+            //console.log("Raycast hit mole number: " + index);
             sceneRoots[1].localMatrix = hammer.setPosition(index);
         }
     }
