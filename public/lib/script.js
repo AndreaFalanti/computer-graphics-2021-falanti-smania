@@ -35,7 +35,7 @@ let p2a_skyboxVertPosAttr;
 let p0u_wvpMatrixLocation, p0u_textureLocation, p0u_nMatrixLocation, p0u_wvMatrixLocation,
     p0u_lightDirLocation, p0u_lightColorLocation, p0u_ambientLightColorLocation,
     p0u_specularColorLocation, p0u_specularGammaLocation, p0u_metallicLocation, p0u_lightTypeLocation,
-    p0u_specularTypeLocation, p0u_lightPosLocation, p0u_spotLightDirLocation, p0u_coneInLocation, 
+    p0u_specularTypeLocation, p0u_lightPosLocation, p0u_spotLightEmitDirLocation, p0u_coneInLocation, 
     p0u_coneOutLocation, p0u_decayLocation, p0u_targetLocation;
 
 // Program 1 -- Plain Color
@@ -60,12 +60,12 @@ const lightPos = [0.0, 3.0, 1.0, 1.0];
 const directionalLightDir = [1.0, -1.0, -1.0];
 const directionalLightColor = [1.0, 1.0, 1.0];
 const ambientLightColor = [0.1, 0.1, 0.1];
-const spotLightDir = [0.0, -1.0, -1.0];
+const spotLightDir = [0.0, -2.5, -1.0];
 
 const specularColor = [1.0, 1.0, 1.0];
 const specularGamma = 24.0;
-const coneIn = 20;
-const coneOut = 25;
+const coneIn = 40;
+const coneOut = 50;
 const decay = 0;
 const target = 61;
 
@@ -142,7 +142,7 @@ function getProgramUniformLocations() {
     p0u_lightDirLocation = gl.getUniformLocation(programs[0], "u_lightDir");
     p0u_lightColorLocation = gl.getUniformLocation(programs[0], "u_lightColor");
     p0u_ambientLightColorLocation = gl.getUniformLocation(programs[0], "u_ambientLightColor");
-    p0u_spotLightDirLocation = gl.getUniformLocation(programs[0], "u_spotLightDir");
+    p0u_spotLightEmitDirLocation = gl.getUniformLocation(programs[0], "u_spotLightEmitDir");
     p0u_lightTypeLocation = gl.getUniformLocation(programs[0], "u_lightType");
     p0u_specularTypeLocation = gl.getUniformLocation(programs[0], "u_specularType");
     p0u_lightPosLocation = gl.getUniformLocation(programs[0], "u_lightPos");
@@ -563,6 +563,8 @@ function drawScene() {
         let lightDirMatrix = utils.invertMatrix(utils.transposeMatrix(viewMatrix));
         let directionalLightDirTransformed = utils.multiplyMatrix3Vector3(
             utils.sub3x3from4x4((lightDirMatrix)), directionalLightDir);
+        let spotLightDirTransformed = utils.multiplyMatrix3Vector3(
+            utils.sub3x3from4x4((lightDirMatrix)), spotLightDir);
 
         // Transform light position from world to camera space
         let lightPosTransformed = utils.multiplyMatrixVector(viewMatrix, lightPos);
@@ -586,7 +588,7 @@ function drawScene() {
                 gl.uniform3fv(p0u_lightDirLocation, directionalLightDirTransformed);
                 gl.uniform3fv(p0u_lightColorLocation, directionalLightColor);
                 gl.uniform3fv(p0u_ambientLightColorLocation, ambientLightColor);
-                gl.uniform3fv(p0u_spotLightDirLocation, spotLightDir);
+                gl.uniform3fv(p0u_spotLightEmitDirLocation, spotLightDirTransformed);
                 gl.uniform3fv(p0u_lightTypeLocation, lightType);
                 gl.uniform2fv(p0u_specularTypeLocation, specularType);
                 gl.uniform3fv(p0u_lightPosLocation, lightPosTransformed.slice(0, 3));

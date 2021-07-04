@@ -15,7 +15,7 @@ uniform vec3 u_lightDir;
 uniform vec3 u_lightPos;
 uniform vec3 u_lightColor;
 uniform vec3 u_ambientLightColor;
-uniform vec3 u_spotLightDir;
+uniform vec3 u_spotLightEmitDir;
 uniform float u_coneIn;
 uniform float u_coneOut;
 uniform float u_decay;
@@ -47,7 +47,7 @@ void main() {
   vec3 directLightColor = u_lightColor;
   vec3 pointLightColor = u_lightColor * pow((u_target / length(u_lightPos - fsPos)), u_decay);
   vec3 spotLightColor = u_lightColor * pow((u_target / length(u_lightPos - fsPos)), u_decay) * 
-    clamp((dot(spotLightDir, normalize(-u_spotLightDir - fsPos)) - cosOut) / (cosIn - cosOut), 0.0, 1.0);
+    clamp((dot(spotLightDir, normalize(-u_spotLightEmitDir)) - cosOut) / (cosIn - cosOut), 0.0, 1.0);
 
   vec3 lightColor = directLightColor * u_lightType.x + pointLightColor * u_lightType.y + spotLightColor * u_lightType.z;
 
