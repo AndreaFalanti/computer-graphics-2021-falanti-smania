@@ -33,7 +33,7 @@ let p2a_skyboxVertPosAttr;
 //#region Program uniforms
 // Program 0 -- Lambert & Phong/Blinn
 let p0u_wvpMatrixLocation, p0u_textureLocation, p0u_nMatrixLocation, p0u_wMatrixLocation,
-    p0u_lightDirLocation, p0u_lightColorLocation, p0u_ambientLightColorLocation, p0u_cameraPosLocation,
+    p0u_lightDirLocation, p0u_lightColorLocation, p0u_ambientLightColorLocation,
     p0u_specularColorLocation, p0u_specularGammaLocation, p0u_metallicLocation, p0u_lightTypeLocation,
     p0u_specularTypeLocation, p0u_lightPosLocation, p0u_spotLightDirLocation, p0u_coneInLocation, 
     p0u_coneOutLocation, p0u_decayLocation, p0u_targetLocation;
@@ -57,7 +57,7 @@ let lightType = [1.0, 0.0, 0.0];
 let specularType = [1.0, 0.0];
 
 const lightPos = [0.0, 3.0, 0.0];
-const directionalLightDir = [2.0, -2.0, -2.0];
+const directionalLightDir = [1.0, -1.0, -1.0];
 const directionalLightColor = [1.0, 1.0, 1.0];
 const ambientLightColor = [0.1, 0.1, 0.1];
 const spotLightDir = [0.0, -5.0, 0.0];
@@ -539,6 +539,7 @@ function drawSkybox(viewProjectionMatrix, skyboxTexture){
 
 function drawScene() {
     resizeCanvasToDisplaySize();
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     // update the local matrices for each object
     animate();
@@ -586,7 +587,6 @@ function drawScene() {
                 gl.uniform2fv(p0u_specularTypeLocation, specularType);
                 gl.uniform3fv(p0u_lightPosLocation, lightPos);
 
-                gl.uniform3fv(p0u_cameraPosLocation, cameraPos);
                 gl.uniform3fv(p0u_specularColorLocation, specularColor);
                 gl.uniform1f(p0u_specularGammaLocation, specularGamma);
                 gl.uniform1f(p0u_coneInLocation, coneIn);
