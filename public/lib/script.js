@@ -32,7 +32,7 @@ let p2a_skyboxVertPosAttr;
 
 //#region Program uniforms
 // Program 0 -- Lambert & Phong/Blinn
-let p0u_wvpMatrixLocation, p0u_textureLocation, p0u_nMatrixLocation, p0u_wMatrixLocation,
+let p0u_wvpMatrixLocation, p0u_textureLocation, p0u_nMatrixLocation, p0u_wvMatrixLocation,
     p0u_lightDirLocation, p0u_lightColorLocation, p0u_ambientLightColorLocation,
     p0u_specularColorLocation, p0u_specularGammaLocation, p0u_metallicLocation, p0u_lightTypeLocation,
     p0u_specularTypeLocation, p0u_lightPosLocation, p0u_spotLightDirLocation, p0u_coneInLocation, 
@@ -56,11 +56,11 @@ let selectedGraphicsIndex = 0;
 let lightType = [1.0, 0.0, 0.0];
 let specularType = [1.0, 0.0];
 
-const lightPos = [0.0, 3.0, 0.0];
+const lightPos = [0.0, 3.0, 1.0, 1.0];
 const directionalLightDir = [1.0, -1.0, -1.0];
 const directionalLightColor = [1.0, 1.0, 1.0];
 const ambientLightColor = [0.1, 0.1, 0.1];
-const spotLightDir = [0.0, -5.0, 0.0];
+const spotLightDir = [0.0, -1.0, -1.0];
 
 const specularColor = [1.0, 1.0, 1.0];
 const specularGamma = 24.0;
@@ -136,7 +136,7 @@ function getProgramUniformLocations() {
     // Program 0 -- Lambert & Phong/Blinn
     p0u_wvpMatrixLocation = gl.getUniformLocation(programs[0], "u_wvpMatrix");
     p0u_nMatrixLocation = gl.getUniformLocation(programs[0], "u_nMatrix");
-    p0u_wMatrixLocation = gl.getUniformLocation(programs[0], "u_wMatrix");
+    p0u_wvMatrixLocation = gl.getUniformLocation(programs[0], "u_wvMatrix");
     p0u_textureLocation = gl.getUniformLocation(programs[0], "u_texture");
 
     p0u_lightDirLocation = gl.getUniformLocation(programs[0], "u_lightDir");
@@ -563,6 +563,10 @@ function drawScene() {
         let lightDirMatrix = utils.invertMatrix(utils.transposeMatrix(viewMatrix));
         let directionalLightDirTransformed = utils.multiplyMatrix3Vector3(
             utils.sub3x3from4x4((lightDirMatrix)), directionalLightDir);
+
+        // Transform light position from world to camera space
+        let lightPosTransformed = utils.multiplyMatrixVector(viewMatrix, lightPos);
+        console.log(lightPosTransformed);
         
         // Matrix used to compute normals -- invertion of world-view matrix
         let normalMatrix = utils.invertMatrix(utils.transposeMatrix(worldViewMatrix));
@@ -576,7 +580,7 @@ function drawScene() {
                 //vs
                 gl.uniformMatrix4fv(p0u_wvpMatrixLocation, gl.FALSE, utils.transposeMatrix(worldViewProjectionMatrix));
                 gl.uniformMatrix4fv(p0u_nMatrixLocation, gl.FALSE, utils.transposeMatrix(normalMatrix));
-                gl.uniformMatrix4fv(p0u_wMatrixLocation, gl.FALSE, utils.transposeMatrix(el.worldMatrix));
+                gl.uniformMatrix4fv(p0u_wvMatrixLocation, gl.FALSE, utils.transposeMatrix(worldViewMatrix));
 
                 //fs
                 gl.uniform3fv(p0u_lightDirLocation, directionalLightDirTransformed);
@@ -585,7 +589,7 @@ function drawScene() {
                 gl.uniform3fv(p0u_spotLightDirLocation, spotLightDir);
                 gl.uniform3fv(p0u_lightTypeLocation, lightType);
                 gl.uniform2fv(p0u_specularTypeLocation, specularType);
-                gl.uniform3fv(p0u_lightPosLocation, lightPos);
+                gl.uniform3fv(p0u_lightPosLocation, lightPosTransformed.slice(0, 3));
 
                 gl.uniform3fv(p0u_specularColorLocation, specularColor);
                 gl.uniform1f(p0u_specularGammaLocation, specularGamma);

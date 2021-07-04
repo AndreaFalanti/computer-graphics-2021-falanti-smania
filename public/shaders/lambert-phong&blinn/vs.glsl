@@ -9,14 +9,14 @@ out vec2 fsUV;
 out vec3 fsNormal;
 out vec3 fsPos;
 
-uniform mat4 u_wMatrix;
+uniform mat4 u_wvMatrix;
 uniform mat4 u_wvpMatrix; 
 uniform mat4 u_nMatrix;
 
 void main() {
   fsUV = a_uv;
   fsNormal = normalize(mat3(u_nMatrix) * a_normal);
-  fsPos = (u_wMatrix * vec4(a_position, 1.0)).xyz;
+  fsPos = (u_wvMatrix * vec4(a_position, 1.0)).xyz;
 
   gl_Position = u_wvpMatrix * vec4(a_position, 1.0);
 }

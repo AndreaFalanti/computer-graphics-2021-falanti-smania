@@ -31,7 +31,7 @@ void main() {
 
   // Parameters required
   vec3 diffColor = vec3(texture(u_texture, fsUV));
-  vec3 eyeDir = normalize(fsPos);
+  vec3 eyeDir = normalize(-fsPos);
   float cosOut = cos(radians(u_coneOut / 2.0));
   float cosIn = cos(radians(u_coneIn / 2.0));
   vec3 specularColor = (u_metallic) ? diffColor : u_specularColor;
