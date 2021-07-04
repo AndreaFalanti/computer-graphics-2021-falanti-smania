@@ -88,6 +88,44 @@ let moles = [];
 /** @type {Hammer} */
 let hammer;
 
+//#region HTML DROPDOWN OPTION CALLABLES
+function changeGraphics(value) {
+    switch(value) {
+        case '0':
+            specularType = [1.0, 0.0];
+            break;
+        case '1':
+            specularType = [0.0, 1.0];
+            break;
+        default:
+            console.log('Invalid graphics option value: ' + value);
+            break;
+    }
+}
+
+function setActiveSkybox(value) {
+    activeSkyboxIndex = value;
+}
+
+function setActiveLight(value) {
+    switch(value) {
+        case '0':
+            lightType = [1.0, 0.0, 0.0];
+            break;
+        case '1':
+            lightType = [0.0, 1.0, 0.0];
+            break;
+        case '2':
+            lightType = [0.0, 0.0, 1.0];
+            break;
+        default:
+            console.log('Invalid lights option value: ' + value);
+            break;
+    }
+}
+//#endregion
+
+//#region game.js helpers
 function activateMoles() {
     moles.forEach(el => el.activate());
 }
@@ -95,29 +133,10 @@ function activateMoles() {
 function deactivateMoles() {
     moles.forEach(el => el.deactivate());
 }
+//#endregion
 
-function changeGraphics(value) {
-    if (value == 0) {
-        specularType = [1.0, 0.0];
-    }
-    else if (value == 1) {
-        specularType = [0.0, 1.0];
-    }
-}
-
-function resizeCanvasToDisplaySize() {
-    let width = gl.canvas.clientWidth;
-    let height = gl.canvas.clientHeight;
-    if (gl.canvas.width != width || gl.canvas.height != height) {
-        gl.canvas.width = width;
-        gl.canvas.height = height;
-        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-    }
-}
-
-//#region GET ATTRIBUTES AND UNIFORMS
+//#region GET ATTRIBUTE AND UNIFORM LOCATIONS
 function getProgramAttributeLocations() {
-
     // Program 0 -- Lambert & Phong/Blinn
     p0a_positionAttributeLocation = gl.getAttribLocation(programs[0], "a_position");
     p0a_uvAttributeLocation = gl.getAttribLocation(programs[0], "a_uv");
@@ -132,7 +151,6 @@ function getProgramAttributeLocations() {
 }
 
 function getProgramUniformLocations() {
-
     // Program 0 -- Lambert & Phong/Blinn
     p0u_wvpMatrixLocation = gl.getUniformLocation(programs[0], "u_wvpMatrix");
     p0u_nMatrixLocation = gl.getUniformLocation(programs[0], "u_nMatrix");
@@ -168,210 +186,16 @@ function getProgramUniformLocations() {
 }
 //#endregion
 
-// called from HTML dropdown (onChange)
-function setActiveSkybox(value) {
-    activeSkyboxIndex = value;
-}
+//#region LOAD EXTERNAL FILES
+async function generateProgram(shadersPath) {
+    let program;
+    await utils.loadFiles([shadersPath + 'vs.glsl', shadersPath + 'fs.glsl'], function (shaderText) {
+        let vertexShader = utils.createShader(gl, gl.VERTEX_SHADER, shaderText[0]);
+        let fragmentShader = utils.createShader(gl, gl.FRAGMENT_SHADER, shaderText[1]);
+        program = utils.createProgram(gl, vertexShader, fragmentShader);
+    });
 
-function setActiveLight(value) {
-    if (value == 1) {
-        lightType = [1.0, 0.0, 0.0];
-    }
-    else if (value == 2) {
-        lightType = [0.0, 1.0, 0.0];
-    }
-    else if (value == 3) {
-        lightType = [0.0, 0.0, 1.0];
-    }
-}
-
-async function main() {
-    // setup the webGL context
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-    gl.clearColor(0, 0, 0, 0);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    gl.enable(gl.DEPTH_TEST);
-    gl.enable(gl.CULL_FACE);
-
-    createSkyboxVAO();
-    // skybox must be loaded before inverting UV system
-    let sbIndoorT = await loadSkybox('indoorSkybox/', '.jpg', 512);
-    let sbVirtualT = await loadSkybox('virtualSkybox/', '.png', 1024);
-    skyboxTextures.push(sbIndoorT, sbVirtualT);
-
-    // flip Y axis in texture coordinates
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-
-    getProgramAttributeLocations();
-    getProgramUniformLocations();
-
-    // generate textures from image files
-    let t1 = await loadImage('Mole.png', gl.TEXTURE0);
-
-    // load the models
-    let cabinetModel = await loadModel('cabinet.obj');
-    let hammerModel = await loadModel('hammer.obj');
-    //console.log("Hammer: ", hammerModel);
-    let moleModel = await loadModel('mole.obj');
-
-    // create the VAOs and the SceneNodes
-    let drawInfo0 = createVaoP0(cabinetModel.vertices, cabinetModel.uv, cabinetModel.normals, cabinetModel.indices, t1);
-    let cabinetNode = new SceneNode(utils.identityMatrix(), [drawInfo0]);
-
-    drawInfo0 = createVaoP0(hammerModel.vertices, hammerModel.uv, hammerModel.normals, hammerModel.indices, t1, false);
-    hammer = new Hammer();
-    let hammerNode = new SceneNode(hammer.defaultPosition, [drawInfo0]);
-
-    drawInfo0 = createVaoP0(moleModel.vertices, moleModel.uv, moleModel.normals, moleModel.indices, t1, false);
-
-    moles.push(new Mole(-0.65, 0.2, false));        // left-back
-    moles.push(new Mole(-0.32, 0.625, true));       // left-front
-    moles.push(new Mole(0.0, 0.2, false));          // center-back
-    moles.push(new Mole(0.32, 0.625, true));        // right-front
-    moles.push(new Mole(0.65, 0.2, false));         // right-back
-
-    // left
-    let moleNode1 = new SceneNode(moles[0].getLocalMatrix(), [drawInfo0]);     // back
-    let moleNode2 = new SceneNode(moles[1].getLocalMatrix(), [drawInfo0]);     // front
-    
-    // center
-    let moleNode3 = new SceneNode(moles[2].getLocalMatrix(), [drawInfo0]);
-
-    // right
-    let moleNode4 = new SceneNode(moles[3].getLocalMatrix(), [drawInfo0]);     // front
-    let moleNode5 = new SceneNode(moles[4].getLocalMatrix(), [drawInfo0]);     // back
-    
-    moleNode1.setParent(cabinetNode);
-    moleNode2.setParent(cabinetNode);
-    moleNode3.setParent(cabinetNode);
-    moleNode4.setParent(cabinetNode);
-    moleNode5.setParent(cabinetNode);
-
-    // lightPos debug
-    // let moleNode6 = new SceneNode(utils.MakeTranslateMatrix(...lightPos.slice(0, 3)), [drawInfo0]);
-    // console.log(moleNode6.localMatrix);
-
-    sceneRoots.push(cabinetNode, hammerNode);
-    sceneObjects.push(cabinetNode, hammerNode, moleNode1, moleNode2, moleNode3, moleNode4, moleNode5);
-
-    // in game.js
-    await loadAudioAssets();
-
-    drawScene();
-}
-
-
-/**
- * Create VAO for program0, returning node drawInfo
- * @param {number[]} vertices 
- * @param {number[]} uv 
- * @param {number[]} normals 
- * @param {number[]} indices 
- * @param {WebGLTexture} glTexture
- * @param {metallic} metallic is this object metallic? 
- * @returns {{ materialColor: number[], texture: WebGLTexture, programInfo: WebGLProgram, bufferLength: number, vertexArray: WebGLVertexArrayObject}} drawInfo
- */
-function createVaoP0(vertices, uv, normals, indices, glTexture, metallic = false) {
-    // console.log('Object [vertices, uv, indices]');
-    // console.log(vertices);
-    // console.log(uv);
-    // console.log(indices);
-
-    gl.useProgram(programs[0]);
-    let vao = gl.createVertexArray();
-    vaoArray.push(vao);
-    gl.bindVertexArray(vao);
-
-    let positionBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(p0a_positionAttributeLocation);
-    gl.vertexAttribPointer(p0a_positionAttributeLocation, 3, gl.FLOAT, false, 0, 0);
-
-    let uvBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uv), gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(p0a_uvAttributeLocation);
-    gl.vertexAttribPointer(p0a_uvAttributeLocation, 2, gl.FLOAT, false, 0, 0);
-
-    let normalBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(p0a_normalAttributeLocation);
-    gl.vertexAttribPointer(p0a_normalAttributeLocation, 3, gl.FLOAT, false, 0, 0);
-
-    let indexBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
-
-    return {
-        materialColor: null,
-        texture: glTexture,
-        programInfo : programs[0],
-        bufferLength: indices.length,   // TODO: verify this is correct
-        vertexArray: vao,
-        uniforms: { 'metallic': metallic }
-    }
-}
-
-/**
- * Create VAO for program1, returning node drawInfo
- * @param {number[]} vertices 
- * @param {number[]} normals 
- * @param {number[]} indices 
- * @param {number[]} color 
- * @returns {{ materialColor: number[], texture: WebGLTexture, programInfo: WebGLProgram, bufferLength: number, vertexArray: WebGLVertexArrayObject}} drawInfo
- */
- function createVaoP1(vertices, normals, indices, color) {
-    gl.useProgram(programs[1]);
-    let vao = gl.createVertexArray();
-    vaoArray.push(vao);
-    gl.bindVertexArray(vao);
-
-    let positionBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(p1a_positionAttributeLocation);
-    gl.vertexAttribPointer(p1a_positionAttributeLocation, 3, gl.FLOAT, false, 0, 0);
-
-    let normalBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(p1a_normalAttributeLocation);
-    gl.vertexAttribPointer(p1a_normalAttributeLocation, 3, gl.FLOAT, false, 0, 0);
-
-    let indexBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
-
-    return {
-        materialColor: color,
-        texture: null,
-        programInfo : programs[1],
-        bufferLength: indices.length,   // TODO: verify this is correct
-        vertexArray: vao
-    }
-}
-
-function createSkyboxVAO() {
-    let skyboxVertPos = new Float32Array([
-        -1, -1, 1.0,
-        1, -1, 1.0,
-        -1, 1, 1.0,
-        -1, 1, 1.0,
-        1, -1, 1.0,
-        1, 1, 1.0,
-    ]);
-    
-    skyboxVao = gl.createVertexArray();
-    vaoArray.push(skyboxVao);
-    gl.bindVertexArray(skyboxVao);
-    
-    let positionBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, skyboxVertPos, gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(p2a_skyboxVertPosAttr);
-    gl.vertexAttribPointer(p2a_skyboxVertPosAttr, 3, gl.FLOAT, false, 0, 0);
+    return program;
 }
 
 /**
@@ -379,7 +203,7 @@ function createSkyboxVAO() {
  * @param {string} modelPath name only
  * @returns {Promise<{vertices: number[], normals: number[], indices: number[], uv: number[]}>}
  */
-async function loadModel(modelPath) {
+ async function loadModel(modelPath) {
     let objStr = await utils.get_objstr(modelsDir + modelPath);
     let objModel = new OBJ.Mesh(objStr);
 
@@ -503,9 +327,218 @@ function loadImage(imagePath, glTextureIndex) {
         };
     });
 }
+//#endregion
+
+function resizeCanvasToDisplaySize() {
+    let width = gl.canvas.clientWidth;
+    let height = gl.canvas.clientHeight;
+    if (gl.canvas.width != width || gl.canvas.height != height) {
+        gl.canvas.width = width;
+        gl.canvas.height = height;
+        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    }
+}
+
+async function main() {
+    // get webGL context
+    let canvas = document.getElementById("c");
+    gl = canvas.getContext("webgl2");
+    if (!gl) {
+        document.write("GL context not opened");
+        return;
+    }
+
+    programs.push(await generateProgram(shadersDir + 'lambert-phong&blinn/'));   // 0: lambert reflection, phong or blinn specular
+    programs.push(await generateProgram(shadersDir + 'plainColor/')); // 1: plain diffuse
+    programs.push(await generateProgram(shadersDir + 'skybox/')); // 2: skybox
+
+    gl.useProgram(programs[0]);
+
+    // setup the webGL context
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.CULL_FACE);
+
+    // setup skyboxes. They must be loaded before inverting UV system
+    createSkyboxVAO();
+    let sbIndoorT = await loadSkybox('indoorSkybox/', '.jpg', 512);
+    let sbVirtualT = await loadSkybox('virtualSkybox/', '.png', 1024);
+    skyboxTextures.push(sbIndoorT, sbVirtualT);
+
+    // flip Y axis in texture coordinates
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+
+    getProgramAttributeLocations();
+    getProgramUniformLocations();
+
+    // generate textures from image files
+    let t1 = await loadImage('Mole.png', gl.TEXTURE0);
+
+    // load the models
+    let cabinetModel = await loadModel('cabinet.obj');
+    let hammerModel = await loadModel('hammer.obj');
+    let moleModel = await loadModel('mole.obj');
+
+    // create the VAOs and the SceneNodes
+    let drawInfo0 = createVaoP0(cabinetModel.vertices, cabinetModel.uv, cabinetModel.normals, cabinetModel.indices, t1);
+    let cabinetNode = new SceneNode(utils.identityMatrix(), [drawInfo0]);
+
+    drawInfo0 = createVaoP0(hammerModel.vertices, hammerModel.uv, hammerModel.normals, hammerModel.indices, t1, false);
+    hammer = new Hammer();
+    let hammerNode = new SceneNode(hammer.defaultPosition, [drawInfo0]);
+
+    drawInfo0 = createVaoP0(moleModel.vertices, moleModel.uv, moleModel.normals, moleModel.indices, t1, false);
+
+    moles.push(new Mole(-0.65, 0.2, false));        // left-back
+    moles.push(new Mole(-0.32, 0.625, true));       // left-front
+    moles.push(new Mole(0.0, 0.2, false));          // center-back
+    moles.push(new Mole(0.32, 0.625, true));        // right-front
+    moles.push(new Mole(0.65, 0.2, false));         // right-back
+
+    // left
+    let moleNode1 = new SceneNode(moles[0].getLocalMatrix(), [drawInfo0]);     // back
+    let moleNode2 = new SceneNode(moles[1].getLocalMatrix(), [drawInfo0]);     // front
+    
+    // center
+    let moleNode3 = new SceneNode(moles[2].getLocalMatrix(), [drawInfo0]);
+
+    // right
+    let moleNode4 = new SceneNode(moles[3].getLocalMatrix(), [drawInfo0]);     // front
+    let moleNode5 = new SceneNode(moles[4].getLocalMatrix(), [drawInfo0]);     // back
+    
+    moleNode1.setParent(cabinetNode);
+    moleNode2.setParent(cabinetNode);
+    moleNode3.setParent(cabinetNode);
+    moleNode4.setParent(cabinetNode);
+    moleNode5.setParent(cabinetNode);
+
+    // lightPos debug
+    // let moleNode6 = new SceneNode(utils.MakeTranslateMatrix(...lightPos.slice(0, 3)), [drawInfo0]);
+    // console.log(moleNode6.localMatrix);
+
+    sceneRoots.push(cabinetNode, hammerNode);
+    sceneObjects.push(cabinetNode, hammerNode, moleNode1, moleNode2, moleNode3, moleNode4, moleNode5);
+
+    // in game.js
+    await loadAudioAssets();
+
+    drawScene();
+}
+
+//#region CREATE VAOs
+/**
+ * Create VAO for program0, returning node drawInfo
+ * @param {number[]} vertices 
+ * @param {number[]} uv 
+ * @param {number[]} normals 
+ * @param {number[]} indices 
+ * @param {WebGLTexture} glTexture
+ * @param {metallic} metallic is this object metallic? 
+ * @returns {{ materialColor: number[], texture: WebGLTexture, programInfo: WebGLProgram, bufferLength: number, vertexArray: WebGLVertexArrayObject}} drawInfo
+ */
+function createVaoP0(vertices, uv, normals, indices, glTexture, metallic = false) {
+    gl.useProgram(programs[0]);
+    let vao = gl.createVertexArray();
+    vaoArray.push(vao);
+    gl.bindVertexArray(vao);
+
+    let positionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(p0a_positionAttributeLocation);
+    gl.vertexAttribPointer(p0a_positionAttributeLocation, 3, gl.FLOAT, false, 0, 0);
+
+    let uvBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uv), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(p0a_uvAttributeLocation);
+    gl.vertexAttribPointer(p0a_uvAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+
+    let normalBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(p0a_normalAttributeLocation);
+    gl.vertexAttribPointer(p0a_normalAttributeLocation, 3, gl.FLOAT, false, 0, 0);
+
+    let indexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+
+    return {
+        materialColor: null,
+        texture: glTexture,
+        programInfo : programs[0],
+        bufferLength: indices.length,
+        vertexArray: vao,
+        uniforms: { 'metallic': metallic }
+    }
+}
+
+/**
+ * Create VAO for program1, returning node drawInfo
+ * @param {number[]} vertices 
+ * @param {number[]} normals 
+ * @param {number[]} indices 
+ * @param {number[]} color 
+ * @returns {{ materialColor: number[], texture: WebGLTexture, programInfo: WebGLProgram, bufferLength: number, vertexArray: WebGLVertexArrayObject}} drawInfo
+ */
+ function createVaoP1(vertices, normals, indices, color) {
+    gl.useProgram(programs[1]);
+    let vao = gl.createVertexArray();
+    vaoArray.push(vao);
+    gl.bindVertexArray(vao);
+
+    let positionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(p1a_positionAttributeLocation);
+    gl.vertexAttribPointer(p1a_positionAttributeLocation, 3, gl.FLOAT, false, 0, 0);
+
+    let normalBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(p1a_normalAttributeLocation);
+    gl.vertexAttribPointer(p1a_normalAttributeLocation, 3, gl.FLOAT, false, 0, 0);
+
+    let indexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+
+    return {
+        materialColor: color,
+        texture: null,
+        programInfo : programs[1],
+        bufferLength: indices.length,
+        vertexArray: vao
+    }
+}
+
+function createSkyboxVAO() {
+    // define cube vertexes, using units to avoid normalization in shaders
+    let skyboxVertPos = new Float32Array([
+        -1, -1, 1.0,
+        1, -1, 1.0,
+        -1, 1, 1.0,
+        -1, 1, 1.0,
+        1, -1, 1.0,
+        1, 1, 1.0,
+    ]);
+    
+    skyboxVao = gl.createVertexArray();
+    vaoArray.push(skyboxVao);
+    gl.bindVertexArray(skyboxVao);
+    
+    let positionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, skyboxVertPos, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(p2a_skyboxVertPosAttr);
+    gl.vertexAttribPointer(p2a_skyboxVertPosAttr, 3, gl.FLOAT, false, 0, 0);
+}
+//#endregion
 
 //#region DRAW SCENE
-
 function animate() {
     let currentTime = (new Date).getTime();
     if (lastUpdateTime) {
@@ -547,7 +580,7 @@ function drawScene() {
 
     // update the local matrices for each object
     animate();
-    regulateCamera();
+    regulateCameraX();
 
     //update world matrixes of each object group
     sceneRoots.forEach(el => el.updateWorldMatrix());
@@ -565,10 +598,8 @@ function drawScene() {
 
         // Transform light direction from world to camera space
         let lightDirMatrix = utils.invertMatrix(utils.transposeMatrix(viewMatrix));
-        let directionalLightDirTransformed = utils.multiplyMatrix3Vector3(
-            utils.sub3x3from4x4((lightDirMatrix)), directionalLightDir);
-        let spotLightDirTransformed = utils.multiplyMatrix3Vector3(
-            utils.sub3x3from4x4((lightDirMatrix)), spotLightDir);
+        let directionalLightDirTransformed = utils.multiplyMatrix3Vector3(utils.sub3x3from4x4(lightDirMatrix), directionalLightDir);
+        let spotLightDirTransformed = utils.multiplyMatrix3Vector3(utils.sub3x3from4x4(lightDirMatrix), spotLightDir);
 
         // Transform light position from world to camera space
         let lightPosTransformed = utils.multiplyMatrixVector(viewMatrix, lightPos);
@@ -614,9 +645,8 @@ function drawScene() {
                 gl.uniformMatrix4fv(p1u_normalMatrixPositionHandle, gl.FALSE, utils.transposeMatrix(normalMatrix));
 
                 gl.uniform3fv(p1u_materialDiffColorHandle, activeDrawInfo.materialColor);
-                // TODO: light hardcoded for test
-                gl.uniform3fv(p1u_lightColorHandle, [1.0, 1.0, 1.0]);
-                gl.uniform3fv(p1u_lightDirectionHandle, [-1.0, 0.0, 0.0]);
+                gl.uniform3fv(p1u_lightColorHandle, directionalLightColor);
+                gl.uniform3fv(p1u_lightDirectionHandle, directionalLightDir);
                 break;
             default:
                 console.log('Invalid program, can\'t assign attributes and uniforms');
@@ -634,64 +664,7 @@ function drawScene() {
 
 //#endregion
 
-async function generateProgram(shadersPath) {
-    let program;
-    await utils.loadFiles([shadersPath + 'vs.glsl', shadersPath + 'fs.glsl'], function (shaderText) {
-        let vertexShader = utils.createShader(gl, gl.VERTEX_SHADER, shaderText[0]);
-        let fragmentShader = utils.createShader(gl, gl.FRAGMENT_SHADER, shaderText[1]);
-        program = utils.createProgram(gl, vertexShader, fragmentShader);
-    });
-
-    return program;
-}
-
-async function init() {
-    let canvas = document.getElementById("c");
-    gl = canvas.getContext("webgl2");
-    if (!gl) {
-        document.write("GL context not opened");
-        return;
-    }
-
-    programs.push(await generateProgram(shadersDir + 'lambert-phong&blinn/'));   // 0: lambert reflection, phong specular
-    programs.push(await generateProgram(shadersDir + 'plainColor/')); // 1: plain diffuse
-    programs.push(await generateProgram(shadersDir + 'skybox/')); // 2: skybox
-
-    gl.useProgram(programs[0]);
-
-    main();
-}
-
-/**
- * Taken from: https://github.com/erich666/GraphicsGems/blob/master/gemsiv/ray_cyl.c, converted to javascript.
- * Only relevant operations for just checking the hit are performed.
- * TODO: actually doesn't use the cylinder height, height is unlimited.
- * @param {*} rayStartPoint 
- * @param {*} rayNormalisedDir 
- * @param {*} cylBase 
- * @param {*} cylAxis 
- * @param {*} cylRadius 
- * @returns {boolean} If raycast hits the cylinder of not
- */
-function rayCylinderIntersection(rayStartPoint, rayNormalisedDir, cylBase, cylAxis, cylRadius) {
-    let RC = utils.subtractVectors(rayStartPoint, cylBase);
-    let n = utils.crossVector(rayNormalisedDir, cylAxis);
-
-    let d;
-    if (utils.vectorLength(n) === 0) {
-        d = utils.dotProduct(RC, cylAxis);
-        let D = utils.subtractVectors(RC, cylAxis.map(el => el * d));
-        d = utils.vectorLength(D);
-
-        return d <= cylRadius;
-    }
-
-    n = utils.normalizeVector3(n);
-    d = Math.abs(utils.dotProduct(RC, n));
-
-    return d <= cylRadius;
-}
-
+//#region RAYCAST
 function performRaycast(e){
     //These commented lines of code only work if the canvas is full screen
     /*console.log("ClientX "+ev.clientX+" ClientY "+ev.clientY);
@@ -758,7 +731,39 @@ function performRaycast(e){
     }
 }
 
-function regulateCamera() {
+/**
+ * Taken from: https://github.com/erich666/GraphicsGems/blob/master/gemsiv/ray_cyl.c, converted to javascript.
+ * Only relevant operations for just checking the hit are performed.
+ * TODO: actually doesn't use the cylinder height, height is unlimited.
+ * @param {number[]} rayStartPoint 
+ * @param {number[]} rayNormalisedDir 
+ * @param {number[]} cylBase 
+ * @param {number[]} cylAxis 
+ * @param {number} cylRadius 
+ * @returns {boolean} If raycast hits the cylinder of not
+ */
+ function rayCylinderIntersection(rayStartPoint, rayNormalisedDir, cylBase, cylAxis, cylRadius) {
+    let RC = utils.subtractVectors(rayStartPoint, cylBase);
+    let n = utils.crossVector(rayNormalisedDir, cylAxis);
+
+    let d;
+    if (utils.vectorLength(n) === 0) {
+        d = utils.dotProduct(RC, cylAxis);
+        let D = utils.subtractVectors(RC, cylAxis.map(el => el * d));
+        d = utils.vectorLength(D);
+
+        return d <= cylRadius;
+    }
+
+    n = utils.normalizeVector3(n);
+    d = Math.abs(utils.dotProduct(RC, n));
+
+    return d <= cylRadius;
+}
+//#endregion
+
+//#region COMMANDS
+function regulateCameraX() {
     if (qKeyDown) {
         cameraX = utils.clamp(cameraX - CAMERA_DELTA, -CAMERA_X_MAX, CAMERA_X_MAX);
     }
@@ -810,9 +815,10 @@ function keyUpListener(e){
             break;
     }
 }
+//#endregion
 
-// launch init() when page is loaded
-window.onload = init;
+// launch main() when page is loaded
+window.onload = main;
 // add listener for keyboard commands (down are better for hold commands)
 window.addEventListener("keydown", keyDownListener, false);
 window.addEventListener("keyup", keyUpListener, false);
