@@ -33,10 +33,11 @@ let p2a_skyboxVertPosAttr;
 //#region Program uniforms
 // Program 0 -- Lambert & Phong/Blinn
 let p0u_wvpMatrixLocation, p0u_textureLocation, p0u_nMatrixLocation, p0u_wvMatrixLocation,
-    p0u_lightDirLocation, p0u_lightColorLocation, p0u_ambientLightColorLocation,
-    p0u_specularColorLocation, p0u_specularGammaLocation, p0u_metallicLocation, p0u_lightTypeLocation,
-    p0u_specularTypeLocation, p0u_lightPosLocation, p0u_spotLightEmitDirLocation, p0u_coneInLocation, 
-    p0u_coneOutLocation, p0u_decayLocation, p0u_targetLocation;
+    p0u_lightDirLocation, p0u_lightColorLocation,
+    p0u_lightPosLocation, p0u_spotLightEmitDirLocation, p0u_coneInLocation, p0u_coneOutLocation, p0u_decayLocation, p0u_targetLocation,
+    p0u_ambientLightColorLocation, p0u_hemisphericDirLocation, p0u_hemisphericUpColorLocation, p0u_hemisphericDownColorLocation,
+    p0u_specularColorLocation, p0u_specularGammaLocation, p0u_metallicLocation,
+    p0u_lightTypeLocation, p0u_ambientTypeLocation, p0u_specularTypeLocation;
 
 // Program 1 -- Plain Color
 let p1u_wvpMatrixLocation, p1u_materialDiffColorHandle, p1u_lightDirectionHandle, p1u_lightColorHandle, p1u_normalMatrixPositionHandle;
@@ -52,22 +53,29 @@ let activeSkyboxIndex = 0;
 
 let selectedGraphicsIndex = 0;
 
-// Light values for uniforms
+// Uniforms for chosing shader behaviour
 let lightType = [1.0, 0.0, 0.0];
 let specularType = [1.0, 0.0];
+let ambientType = [1.0, 0.0];
 
+// Light values for uniforms
 const lightPos = [0.0, 3.0, 2.0, 1.0];
 const directionalLightDir = [1.0, -1.0, -1.0];
 const directionalLightColor = [1.0, 1.0, 1.0];
-const ambientLightColor = [0.1, 0.1, 0.1];
 const spotLightDir = [0.0, -1.5, -1.0];
-
-const specularColor = [1.0, 1.0, 1.0];
-const specularGamma = 24.0;
 const coneIn = 30;
 const coneOut = 40;
 const decay = 1;
-const target = 2.2;
+const target = 2.2; // g for spot and point lights
+
+// Ambient uniforms
+const ambientLightColor = [0.1, 0.1, 0.1];
+const hemisphericDir = [-0.6, 0.4, 0.0, 1.0];
+const hemisphericUpColor = [0.13, 0.13, 0.13];
+const hemisphericDownColor = [0.07, 0.07, 0.07];
+
+const specularColor = [1.0, 1.0, 1.0];
+const specularGamma = 24.0;
 
 // TODO: textures and VAOs arrays are probably useless, because now references are stored in sceneNode
 let textures = [];
@@ -93,9 +101,19 @@ function changeGraphics(value) {
     switch(value) {
         case '0':
             specularType = [1.0, 0.0];
+            ambientType = [1.0, 0.0];
             break;
         case '1':
             specularType = [0.0, 1.0];
+            ambientType = [1.0, 0.0];
+            break;
+        case '2':
+            specularType = [1.0, 0.0];
+            ambientType = [0.0, 1.0];
+            break;
+        case '3':
+            specularType = [0.0, 1.0];
+            ambientType = [0.0, 1.0];
             break;
         default:
             console.log('Invalid graphics option value: ' + value);
@@ -157,21 +175,26 @@ function getProgramUniformLocations() {
     p0u_wvMatrixLocation = gl.getUniformLocation(programs[0], "u_wvMatrix");
     p0u_textureLocation = gl.getUniformLocation(programs[0], "u_texture");
 
+    p0u_lightTypeLocation = gl.getUniformLocation(programs[0], "u_lightType");
     p0u_lightDirLocation = gl.getUniformLocation(programs[0], "u_lightDir");
     p0u_lightColorLocation = gl.getUniformLocation(programs[0], "u_lightColor");
-    p0u_ambientLightColorLocation = gl.getUniformLocation(programs[0], "u_ambientLightColor");
     p0u_spotLightEmitDirLocation = gl.getUniformLocation(programs[0], "u_spotLightEmitDir");
-    p0u_lightTypeLocation = gl.getUniformLocation(programs[0], "u_lightType");
-    p0u_specularTypeLocation = gl.getUniformLocation(programs[0], "u_specularType");
     p0u_lightPosLocation = gl.getUniformLocation(programs[0], "u_lightPos");
-
-    p0u_specularColorLocation = gl.getUniformLocation(programs[0], "u_specularColor");
-    p0u_specularGammaLocation = gl.getUniformLocation(programs[0], "u_specularGamma");
-    p0u_metallicLocation = gl.getUniformLocation(programs[0], "u_metallic");
     p0u_coneInLocation = gl.getUniformLocation(programs[0], "u_coneIn");
     p0u_coneOutLocation = gl.getUniformLocation(programs[0], "u_coneOut");
     p0u_decayLocation = gl.getUniformLocation(programs[0], "u_decay");
     p0u_targetLocation = gl.getUniformLocation(programs[0], "u_target");
+
+    p0u_specularTypeLocation = gl.getUniformLocation(programs[0], "u_specularType");
+    p0u_specularColorLocation = gl.getUniformLocation(programs[0], "u_specularColor");
+    p0u_specularGammaLocation = gl.getUniformLocation(programs[0], "u_specularGamma");
+    p0u_metallicLocation = gl.getUniformLocation(programs[0], "u_metallic");
+
+    p0u_ambientTypeLocation = gl.getUniformLocation(programs[0], "u_ambientType");
+    p0u_ambientLightColorLocation = gl.getUniformLocation(programs[0], "u_ambientLightColor");
+    p0u_hemisphericDirLocation = gl.getUniformLocation(programs[0], "u_hemisphericDir");
+    p0u_hemisphericUpColorLocation = gl.getUniformLocation(programs[0], "u_hemisphericUpColor");
+    p0u_hemisphericDownColorLocation = gl.getUniformLocation(programs[0], "u_hemisphericDownColor");
 
     // Program 1 -- Plain Colors
     p1u_wvpMatrixLocation = gl.getUniformLocation(programs[1], "u_wvpMatrix");
@@ -606,6 +629,8 @@ function drawScene() {
         
         // Matrix used to compute normals -- invertion of world-view matrix
         let normalMatrix = utils.invertMatrix(utils.transposeMatrix(worldViewMatrix));
+        // TODO: guess that dir must be transformed with the same matrix of normals, as it is associated to normals for computation
+        let hemisphericDirTransformed = utils.multiplyMatrixVector(normalMatrix, hemisphericDir);
       
         // TODO: find best way to address multiple programs uniform assignment
         let activeDrawInfo = el.drawInfo[selectedGraphicsIndex];
@@ -619,26 +644,30 @@ function drawScene() {
                 gl.uniformMatrix4fv(p0u_wvMatrixLocation, gl.FALSE, utils.transposeMatrix(worldViewMatrix));
 
                 //fs
+                gl.uniform3fv(p0u_lightTypeLocation, lightType);
                 gl.uniform3fv(p0u_lightDirLocation, directionalLightDirTransformed);
                 gl.uniform3fv(p0u_lightColorLocation, directionalLightColor);
-                gl.uniform3fv(p0u_ambientLightColorLocation, ambientLightColor);
                 gl.uniform3fv(p0u_spotLightEmitDirLocation, spotLightDirTransformed);
-                gl.uniform3fv(p0u_lightTypeLocation, lightType);
-                gl.uniform2fv(p0u_specularTypeLocation, specularType);
-                gl.uniform3fv(p0u_lightPosLocation, lightPosTransformed.slice(0, 3));
-
-                gl.uniform3fv(p0u_specularColorLocation, specularColor);
-                gl.uniform1f(p0u_specularGammaLocation, specularGamma);
                 gl.uniform1f(p0u_coneInLocation, coneIn);
                 gl.uniform1f(p0u_coneOutLocation, coneOut);
                 gl.uniform1f(p0u_decayLocation, decay);
                 gl.uniform1f(p0u_targetLocation, target);
+                gl.uniform3fv(p0u_lightPosLocation, lightPosTransformed.slice(0, 3));
+                     
+                gl.uniform2fv(p0u_specularTypeLocation, specularType);
+                gl.uniform3fv(p0u_specularColorLocation, specularColor);
+                gl.uniform1f(p0u_specularGammaLocation, specularGamma);
+                gl.uniform1i(p0u_metallicLocation, activeDrawInfo.uniforms.metallic);
+
+                gl.uniform2fv(p0u_ambientTypeLocation, ambientType);
+                gl.uniform3fv(p0u_ambientLightColorLocation, ambientLightColor);
+                gl.uniform3fv(p0u_hemisphericDirLocation, hemisphericDirTransformed.slice(0, 3));
+                gl.uniform3fv(p0u_hemisphericUpColorLocation, hemisphericUpColor);
+                gl.uniform3fv(p0u_hemisphericDownColorLocation, hemisphericDownColor);
 
                 gl.activeTexture(gl.TEXTURE0);
                 gl.bindTexture(gl.TEXTURE_2D, activeDrawInfo.texture);
                 gl.uniform1i(p0u_textureLocation, 0);
-
-                gl.uniform1i(p0u_metallicLocation, activeDrawInfo.uniforms.metallic);
                 break;
             case programs[1]:
                 gl.uniformMatrix4fv(p1u_wvpMatrixLocation, gl.FALSE, utils.transposeMatrix(worldViewProjectionMatrix));

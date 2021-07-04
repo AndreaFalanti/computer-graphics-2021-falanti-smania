@@ -14,12 +14,17 @@ uniform vec2 u_specularType;
 uniform vec3 u_lightDir;
 uniform vec3 u_lightPos;
 uniform vec3 u_lightColor;
-uniform vec3 u_ambientLightColor;
 uniform vec3 u_spotLightEmitDir;
 uniform float u_coneIn;
 uniform float u_coneOut;
 uniform float u_decay;
 uniform float u_target;
+
+uniform vec2 u_ambientType;
+uniform vec3 u_ambientLightColor;
+uniform vec3 u_hemisphericDir;
+uniform vec3 u_hemisphericUpColor;
+uniform vec3 u_hemisphericDownColor;
 
 uniform vec3 u_specularColor;
 uniform float u_specularGamma;
@@ -63,9 +68,16 @@ void main() {
   vec3 hDir = normalize(lightDir + eyeDir);
   vec3 specularBlinn = pow(clamp(dot(fsNormal, hDir), 0.0, 1.0), u_specularGamma) * specularColor;
 
+  // Ambient component
+  vec3 nHemisfericDir = normalize(u_hemisphericDir);
+  vec3 hemisphericColor = (dot(fsNormal, nHemisfericDir) + 1.0) / 2.0 * u_hemisphericUpColor +
+    (1.0 - dot(fsNormal, nHemisfericDir)) / 2.0 * u_hemisphericDownColor;
+  vec3 ambientColor = u_ambientLightColor * u_ambientType.x + hemisphericColor * u_ambientType.y;
+
   vec3 specularComp = specularPhong * u_specularType.x + specularBlinn * u_specularType.y;
 
   // Final output color
-  outColor = clamp(vec4(lightColor * (diffuseComp + specularComp) + u_ambientLightColor * diffColor, 1.0), 0.0, 1.0);
+  outColor = clamp(vec4(lightColor * (diffuseComp + specularComp) + ambientColor * diffColor, 1.0), 0.0, 1.0);
   //outColor = clamp(vec4(u_lightColor * specComp, 1.0), 0.0, 1.0); // specular debugging
+  //outColor = clamp(vec4(ambientColor * diffColor, 1.0), 0.0, 1.0); // specular debugging
 }
