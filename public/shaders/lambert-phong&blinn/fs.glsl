@@ -33,7 +33,6 @@ uniform bool u_metallic;
 out vec4 outColor;
 
 void main() {
-
   // Parameters required
   vec3 diffColor = vec3(texture(u_texture, fsUV));
   vec3 eyeDir = normalize(-fsPos);
@@ -68,13 +67,13 @@ void main() {
   vec3 hDir = normalize(lightDir + eyeDir);
   vec3 specularBlinn = pow(clamp(dot(fsNormal, hDir), 0.0, 1.0), u_specularGamma) * specularColor;
 
+  vec3 specularComp = specularPhong * u_specularType.x + specularBlinn * u_specularType.y;
+
   // Ambient component
   vec3 nHemisfericDir = normalize(u_hemisphericDir);
-  vec3 hemisphericColor = (dot(fsNormal, nHemisfericDir) + 1.0) / 2.0 * u_hemisphericUpColor +
-    (1.0 - dot(fsNormal, nHemisfericDir)) / 2.0 * u_hemisphericDownColor;
+  float cAlpha = dot(fsNormal, nHemisfericDir);
+  vec3 hemisphericColor = (cAlpha + 1.0) / 2.0 * u_hemisphericUpColor + (1.0 - cAlpha) / 2.0 * u_hemisphericDownColor;
   vec3 ambientColor = u_ambientLightColor * u_ambientType.x + hemisphericColor * u_ambientType.y;
-
-  vec3 specularComp = specularPhong * u_specularType.x + specularBlinn * u_specularType.y;
 
   // Final output color
   outColor = clamp(vec4(lightColor * (diffuseComp + specularComp) + ambientColor * diffColor, 1.0), 0.0, 1.0);

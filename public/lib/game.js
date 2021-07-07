@@ -97,7 +97,6 @@ function handlePossibleHammerHit(hammer, moles) {
     hammer.hitting = false;
     let targetMole = moles[hammer.currentPosition];
     if (targetMole.hittable && playing) {
-        // TODO: play sound
         playSound(hammerSound);
         targetMole.onHit();
         score += 100;

@@ -3,8 +3,6 @@
 //Includes texture operations
 //Includes initInteraction() function
 
-// TODO: use very ugly construct previous to ES6, but it's not the goal of the project to improve these functions so they're left almost unmodified
-
 var utils = {
 	//#region OUR UTILS
 	

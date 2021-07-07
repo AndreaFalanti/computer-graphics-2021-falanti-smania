@@ -384,6 +384,9 @@ async function main() {
     gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.CULL_FACE);
 
+    getProgramAttributeLocations();
+    getProgramUniformLocations();
+
     // setup skyboxes. They must be loaded before inverting UV system
     createSkyboxVAO();
     let sbIndoorT = await loadSkybox('indoorSkybox/', '.jpg', 512);
@@ -392,9 +395,6 @@ async function main() {
 
     // flip Y axis in texture coordinates
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-
-    getProgramAttributeLocations();
-    getProgramUniformLocations();
 
     // generate textures from image files
     let t1 = await loadImage('Mole.png', gl.TEXTURE0);
@@ -614,18 +614,18 @@ function drawScene() {
     viewMatrix = utils.MakeLookAt(cameraPos, [0.0, 1.8, 0.0], [0.0, 1.0, 0.0]);
     let viewProjectionMatrix = utils.multiplyMatrices(perspectiveMatrix, viewMatrix);
 
+    // Transform light direction from world to camera space
+    let lightDirMatrix = utils.invertMatrix(utils.transposeMatrix(viewMatrix));
+    let directionalLightDirTransformed = utils.multiplyMatrix3Vector3(utils.sub3x3from4x4(lightDirMatrix), directionalLightDir);
+    let spotLightDirTransformed = utils.multiplyMatrix3Vector3(utils.sub3x3from4x4(lightDirMatrix), spotLightDir);
+
+    // Transform light position from world to camera space
+    let lightPosTransformed = utils.multiplyMatrixVector(viewMatrix, lightPos);
+
     // Compute all the matrices for rendering
     sceneObjects.forEach(el => {
         let worldViewMatrix = utils.multiplyMatrices(viewMatrix, el.worldMatrix)
         let worldViewProjectionMatrix = utils.multiplyMatrices(perspectiveMatrix, worldViewMatrix);
-
-        // Transform light direction from world to camera space
-        let lightDirMatrix = utils.invertMatrix(utils.transposeMatrix(viewMatrix));
-        let directionalLightDirTransformed = utils.multiplyMatrix3Vector3(utils.sub3x3from4x4(lightDirMatrix), directionalLightDir);
-        let spotLightDirTransformed = utils.multiplyMatrix3Vector3(utils.sub3x3from4x4(lightDirMatrix), spotLightDir);
-
-        // Transform light position from world to camera space
-        let lightPosTransformed = utils.multiplyMatrixVector(viewMatrix, lightPos);
         
         // Matrix used to compute normals -- invertion of world-view matrix
         let normalMatrix = utils.invertMatrix(utils.transposeMatrix(worldViewMatrix));
@@ -745,7 +745,6 @@ function performRaycast(e){
     let rayStartPoint = cameraPos;
     
     //Iterate on all moles in the scene to check for collisions
-    // TODO: avoid multiple collisions or check for the nearest one
     let hit = false;
     let raycastMoleIndexes = [1, 3, 0, 2, 4];   // Process the front row moles first (odd indexes), then the back row moles (even indexes)
 
